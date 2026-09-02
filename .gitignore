@@ -1,0 +1,11 @@
+.RData
+.Rhistory
+.Rproj.user/
+.DS_Store
+.Rapp.history
+Thesis.html
+
+simulated_expression_data.rds
+pca_simulation_result.rds
+
+data/raw/
