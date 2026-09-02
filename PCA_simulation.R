@@ -87,10 +87,7 @@ pca_result <- prcomp(
 # PCA summary
 summary(pca_result)
 
-
-# -------------------------
 # EIGENVALUES
-# -------------------------
 
 eigenvalues <- pca_result$sdev^2
 
@@ -110,10 +107,7 @@ cumulative_variance <-
 
 cumulative_variance
 
-
-# -------------------------
 # LOADINGS
-# -------------------------
 
 # Gene weights for PC1
 pca_result$rotation[, 1]
@@ -122,17 +116,11 @@ pca_result$rotation[, 1]
 # Gene weights for PC2
 pca_result$rotation[, 2]
 
-
-# -------------------------
 # PATIENT PC SCORES
-# -------------------------
 
 pca_result$x[1:5, 1:2]
 
-
-# -------------------------
 # SCREE PLOT
-# -------------------------
 
 plot(
   variance_explained,
@@ -142,10 +130,7 @@ plot(
   main = "Scree Plot"
 )
 
-
-# -------------------------
 # PC1 VS PC2
-# -------------------------
 
 plot(
   pca_result$x[, 1],
@@ -156,9 +141,7 @@ plot(
 )
 
 
-# -------------------------
 # SAVE RESULTS
-# -------------------------
 
 saveRDS(
   expression_data,
