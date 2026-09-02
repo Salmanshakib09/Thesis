@@ -42,10 +42,7 @@ selected_genes
 
 length(selected_genes)
 
-
-# -------------------------
 # SIMULATE EXPRESSION DATA
-# -------------------------
 
 set.seed(123)
 
@@ -54,7 +51,6 @@ expression_data <- matrix(
   nrow = 100,
   ncol = length(selected_genes)
 )
-
 
 # Add gene names
 colnames(expression_data) <- selected_genes
@@ -72,10 +68,7 @@ dim(expression_data)
 
 expression_data[1:5, ]
 
-
-# -------------------------
 # PCA
-# -------------------------
 
 pca_result <- prcomp(
   expression_data,
