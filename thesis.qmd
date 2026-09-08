@@ -142,16 +142,5 @@ The final comparison will consider combinations of:
 -   predictive model,
 -   and dataset.
 
-For example:
-
-**KEGG + PCA + LASSO**
-
-will be compared with combinations such as:
-
-**KEGG + GSVA + LASSO**
-
-**Reactome + PCA + Random Forest**
-
-**GO + GSVA + XGBoost**
 
 # References
