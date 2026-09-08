@@ -3,15 +3,28 @@ title: "Thesis"
 author: "Salman Shakib"
 format: html
 editor: visual
+bibliography: references.bib
+csl: bioinformatics.csl
 ---
 
 # Introduction
 
+## Prediction papers
+
 ### Segura-Lepe et al. (2019)
 
-Compared predictive models built in **gene space** versus **pathway space**. - Used **PCA** to summarize genes within each pathway; PC1 was used as the pathway score. - Pathway-based models were generally **more robust to added noise** than gene-level models. - Surprisingly, **randomized pathways had similar predictive accuracy and robustness** to real biological pathways. - However, models based on real pathways were **more parsimonious**, with fewer pathways contributing strongly. - Results were consistent across different datasets and modeling approaches.
+Paper @segura2019.
+
+Compared predictive models built in **gene space** versus **pathway space**. - Used **PCA** to summarize genes within each pathway; PC1 was used as the pathway score.
+
+-   Pathway-based models were generally **more robust to added noise** than gene-level models.
+-   Surprisingly, **randomized pathways had similar predictive accuracy and robustness** to real biological pathways.
+-   However, models based on real pathways were **more parsimonious**, with fewer pathways contributing strongly.
+-   Results were consistent across different datasets and modeling approaches.
 
 ### Zheng et al. (2020)
+
+Paper by @zheng2020.
 
 -   Compared **gene-level** and **pathway-level** models for cancer survival prediction.
 -   Used TCGA gene-expression data and **MSigDB Hallmark pathways**.
@@ -23,7 +36,17 @@ Compared predictive models built in **gene space** versus **pathway space**. - U
 
 ### Relevance to This Thesis
 
-These studies suggest that pathway-based modeling can improve robustness, stability, and interpretability, but the results may depend on the **pathway definition, pathway-scoring method, correlation structure, and predictive model**. This motivates comparing different pathway collections, including KEGG, Reactome, GO, WGCNA-derived modules, and randomized pathways, together with scoring methods such as PCA and GSVA. \# Methods \# Methods
+These studies suggest that pathway-based modeling can improve robustness, stability, and interpretability, but the results may depend on the **pathway definition, pathway-scoring method, correlation structure, and predictive model**. This motivates comparing different pathway collections, including KEGG, Reactome, GO, WGCNA-derived modules, and randomized pathways, together with scoring methods such as PCA and GSVA.
+
+## GSVA
+
+## Pathway databases
+
+Reference for KEGG
+
+Reference Reactome
+
+# Methods
 
 ## Overview
 
@@ -34,6 +57,8 @@ The study will compare different choices at three main stages of pathway-based p
 3.  **Predictive modeling**
 
 The complete analysis will be repeated across multiple gene-expression datasets to evaluate whether the results are consistent across different applications.
+
+\[TODO: set up some notation in a "Problem Formulation" section. See https://www.nature.com/articles/s41598-019-41918-3#Sec2 for an example\]
 
 ## Pathway Collections
 
@@ -48,6 +73,12 @@ Several approaches for defining groups of genes will be considered:
 
 Random pathway collections will be used as a control for evaluating the importance of biological pathway definitions. An initial approach will create several randomized versions of the KEGG pathway collection while preserving pathway sizes.
 
+\[TODO: rewrite with one paragraph for all the existing pathway collections (KEGG, Reactome, GO, MSigDB immunologic signature gene set, MSigDB ..., etc.).\]
+
+\[TODO: if using WGCNA, write in separate paragraph/subsection.\]
+
+\[TODO: if using randomized pathways, describe in separate paragraph/subsection.\]
+
 ## Pathway-Level Scoring
 
 For each pathway collection, gene-expression measurements will be converted into sample-specific pathway scores.
@@ -57,6 +88,8 @@ For each pathway collection, gene-expression measurements will be converted into
 PCA will be applied separately to the genes belonging to each pathway. The first principal component (PC1) will initially be used as the pathway score for each sample.
 
 Thus, a pathway containing several genes will be represented by a smaller number of variables, initially one PC1 score per sample.
+
+\[TODO: reference PathwayPCA paper, if that's what you use for computing the PCAs and doing the prediction.\]
 
 ### Gene Set Variation Analysis (GSVA)
 
@@ -120,3 +153,5 @@ will be compared with combinations such as:
 **Reactome + PCA + Random Forest**
 
 **GO + GSVA + XGBoost**
+
+# References
