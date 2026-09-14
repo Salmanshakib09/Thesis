@@ -1,7 +1,7 @@
 ---
 title: "Thesis"
 author: "Salman Shakib"
-format: html
+format: pdf
 editor: visual
 bibliography: references.bib
 csl: bioinformatics.csl
@@ -38,14 +38,6 @@ Paper by @zheng2020.
 
 These studies suggest that pathway-based modeling can improve robustness, stability, and interpretability, but the results may depend on the **pathway definition, pathway-scoring method, correlation structure, and predictive model**. This motivates comparing different pathway collections, including KEGG, Reactome, GO, WGCNA-derived modules, and randomized pathways, together with scoring methods such as PCA and GSVA.
 
-## GSVA
-
-## Pathway databases
-
-Reference for KEGG
-
-Reference Reactome
-
 # Methods
 
 ## Overview
@@ -58,38 +50,85 @@ The study will compare different choices at three main stages of pathway-based p
 
 The complete analysis will be repeated across multiple gene-expression datasets to evaluate whether the results are consistent across different applications.
 
-\[TODO: set up some notation in a "Problem Formulation" section. See https://www.nature.com/articles/s41598-019-41918-3#Sec2 for an example\]
+## Problem formulation
+
+Consider a gene expression dataset collected from $n$ subjects, where expression is measured for $p$ genes. Let
+
+$$
+\mathbf{X} \in \mathbb{R}^{n \times p}
+$$
+
+denote the observed gene expression matrix, where $X_{ij}$ is the expression value of gene $j$ for subject $i$. For each subject $i \in \{1,\ldots,n\}$, let $T_i$ denote the observed overall survival or follow-up time and let $\delta_i \in \{0,1\}$ denote the event indicator, where $\delta_i = 1$ indicates an observed death and $\delta_i = 0$ indicates a censored observation. The survival outcome for subject $i$ is therefore represented by $Y_i = (T_i,\delta_i)$.
+
+Let $\mathcal{G} \subseteq \mathcal{P}(\{1,\ldots,p\})$ denote a collection of pathways, where $\mathcal{P}$ denotes the power set. For a pathway $G \in \mathcal{G}$, the elements of $G$ index the genes belonging to that pathway, and
+
+$$
+\mathbf{X}(G) \in \mathbb{R}^{n \times |G|}
+$$
+
+denotes the gene expression matrix restricted to the genes contained in $G$. Different pathway collections, such as KEGG, Reactome, and Gene Ontology, may define different sets of pathways and different gene memberships within those pathways.
+
+For each pathway $G \in \mathcal{G}$, a pathway-level scoring method is used to summarize $\mathbf{X}(G)$ into one or more subject-specific pathway scores. Let
+
+$$
+Z_{iG}^{(s)}
+$$
+
+denote the score for subject $i$ in pathway $G$ obtained using scoring method $s$, where $s$ may represent methods such as PCA or GSVA. In the case of a PCA-based representation using one principal component per pathway, $Z_{iG}^{(\mathrm{PCA})}$ corresponds to the first principal component score for subject $i$ in pathway $G$.
+
+The resulting pathway-level features are used as predictors of the survival outcome. Let $f_m$ denote a predictive model indexed by modeling method $m$. The objective is to evaluate how the choice of pathway collection $\mathcal{G}$, pathway-scoring method $s$, and predictive model $m$ affects the prediction of overall survival. These choices will be compared across multiple gene expression datasets using appropriate measures of predictive performance.
 
 ## Pathway Collections
 
 Several approaches for defining groups of genes will be considered:
 
--   KEGG
--   Reactome
--   Gene Ontology (GO)
--   Other relevant MSigDB pathway collections
--   Data-driven gene modules obtained using WGCNA
--   Randomized pathway collections
+-   KEGG : KEGG (Kyoto Encyclopedia of Genes and Genomes) is a curated pathway database that organizes genes and proteins into biological pathways representing cellular processes, metabolism, signaling, and disease mechanisms. KEGG pathways are widely used in genomic studies because they provide interpretable groups of genes with known functional relationships.
+-   Reactome: Reactome is a curated biological pathway database that describes molecular reactions and signaling events in detail. Its pathways are organized hierarchically, allowing broad biological processes to be divided into more specific subprocesses. Reactome often provides more detailed pathway definitions than KEGG.
+-   Gene Ontology (GO): Gene Ontology classifies genes according to three major categories: Biological Process, Molecular Function, and Cellular Component. Unlike traditional pathway databases, GO focuses on functional annotations rather than only defined signaling or metabolic pathways. GO gene sets can therefore be large and highly overlapping.
+-   MSigDB Hallmark Gene Sets: The Hallmark collection contains compact gene sets representing well-defined biological states and processes, such as cell proliferation, inflammation, apoptosis, and immune response. These gene sets were designed to reduce redundancy among larger MSigDB collections and provide more interpretable biological signals.
+-   Randomized pathway collections: Randomized pathways are artificial gene sets created by shuffling genes while preserving features such as pathway size. They serve as a negative control to test whether real biological pathway structure provides better predictive information than arbitrary gene groupings.
 
-Random pathway collections will be used as a control for evaluating the importance of biological pathway definitions. An initial approach will create several randomized versions of the KEGG pathway collection while preserving pathway sizes.
+### WGCNA
 
-\[TODO: rewrite with one paragraph for all the existing pathway collections (KEGG, Reactome, GO, MSigDB immunologic signature gene set, MSigDB ..., etc.).\]
-
-\[TODO: if using WGCNA, write in separate paragraph/subsection.\]
-
-\[TODO: if using randomized pathways, describe in separate paragraph/subsection.\]
+(Weighted Gene Co-expression Network Analysis) is a data-driven method that groups genes into modules based on similar expression patterns across samples. Unlike curated pathway databases such as KEGG or Reactome, WGCNA does not rely on predefined biological knowledge; instead, it identifies groups of genes that tend to be co-expressed in the observed dataset. Each module can be summarized by a module eigengene, which represents the main expression pattern of that group. In this study, WGCNA-derived modules can be treated as an alternative pathway collection and compared with curated and randomized gene sets.
 
 ## Pathway-Level Scoring
 
 For each pathway collection, gene-expression measurements will be converted into sample-specific pathway scores.
 
-### Principal Component Analysis (PCA)
+## PathwayPCA Analysis
 
-PCA will be applied separately to the genes belonging to each pathway. The first principal component (PC1) will initially be used as the pathway score for each sample.
+Pathway-level analysis was performed using the `pathwayPCA` R package and the adaptive, elastic-net, sparse principal component analysis (AES-PCA) method. For each pathway, AES-PCA was applied to the expression levels of genes belonging to that pathway to generate pathway-specific principal component (PC) scores. In this analysis, the first principal component (PC1) was used to summarize each pathway. The pathway PC scores are constructed without using the survival outcome.
 
-Thus, a pathway containing several genes will be represented by a smaller number of variables, initially one PC1 score per sample.
+For overall survival, each pathway was evaluated separately using a Cox proportional hazards model:
 
-\[TODO: reference PathwayPCA paper, if that's what you use for computing the PCAs and doing the prediction.\]
+$$
+h_i(t) = h_0(t)\exp(\beta PC_{i1}),
+$$
+
+where $PC_{i1}$ is the PC1 score for patient $i$, $h_0(t)$ is the baseline hazard, and $\beta$ represents the association between the pathway score and the hazard of death.
+
+The null hypothesis for each pathway was
+
+$$
+H_0: \beta = 0,
+$$
+
+indicating no association between the pathway PC score and overall survival.
+
+Because `numReps = 0` was used in `AESPCA_pVals()`, pathway p-values were calculated parametrically using the score test from the Cox proportional hazards model rather than by permutation. When permutation testing is used (`numReps > 0`), the survival outcome is repeatedly permuted and empirical pathway p-values are calculated from the resulting models.
+
+Since many pathways were tested simultaneously, p-values were adjusted using the Benjamini-Hochberg (BH) procedure to control the false discovery rate.
+
+The PathwayPCA pathway-testing step evaluates the association between individual pathway scores and survival but does not directly evaluate predictive performance. Measures such as the concordance index, time-dependent AUC, prediction error, or test-set performance must therefore be evaluated separately in subsequent predictive modeling analyses.
+
+## PathwayPCA Results
+
+PathwayPCA was applied to the TCGA-LUAD gene-expression data using KEGG_MEDICUS pathway definitions and overall survival as the outcome. For each pathway, the first principal component (PC1) was used as the pathway-level score and tested for association with survival using a Cox proportional hazards model.
+
+Several pathways had nominal raw p-values below 0.05. However, after adjustment for multiple testing using the Benjamini-Hochberg false discovery rate procedure, none of the pathways remained statistically significant at an FDR threshold of 0.05.
+
+The top-ranked pathway had a raw p-value of approximately 0.0034, but its BH-adjusted p-value was approximately 0.427. Therefore, the top pathways should be interpreted as the most strongly ranked pathways rather than statistically significant pathways after multiple-testing correction.
 
 ### Gene Set Variation Analysis (GSVA)
 
