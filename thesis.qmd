@@ -132,11 +132,13 @@ The top-ranked pathway had a raw p-value of approximately 0.0034, but its BH-adj
 
 ## Gene Set Variation Analysis (GSVA)
 
+### @hanzelmann2013
+
 Gene Set Variation Analysis (GSVA) is a non-parametric and unsupervised method that transforms a gene-by-sample expression matrix into a pathway-by-sample matrix of enrichment scores. Each patient receives one score for each pathway, representing relative pathway activity across the sample population.
 
 GSVA uses gene-expression distributions, within-sample ranking, and a Kolmogorov--Smirnov-like random walk to calculate pathway enrichment scores. These scores can then be used as predictors in downstream models such as Cox proportional hazards regression for survival analysis.
 
-In this study, GSVA will be used as a pathway-level scoring method and compared with PCA-based pathway scores for survival prediction. @hanzelmann2013
+In this study, GSVA will be used as a pathway-level scoring method and compared with PCA-based pathway scores for survival prediction. 
 
 ## Predictive Models
 
