@@ -9,4 +9,6 @@ simulated_expression_data.rds
 pca_simulation_result.rds
 
 data/raw/
-data/processed/*.rds
+data/processed/
+.RDataTmp
+thesis.pdf
