@@ -98,7 +98,7 @@ For each pathway collection, gene-expression measurements will be converted into
 
 ## PathwayPCA Analysis
 
-Pathway-level analysis was performed using the `pathwayPCA` R package and the adaptive, elastic-net, sparse principal component analysis (AES-PCA) method. For each pathway, AES-PCA was applied to the expression levels of genes belonging to that pathway to generate pathway-specific principal component (PC) scores. In this analysis, the first principal component (PC1) was used to summarize each pathway. The pathway PC scores are constructed without using the survival outcome.
+Pathway-level analysis was performed using the `pathwayPCA` R package and the adaptive, elastic-net, sparse principal component analysis (AES-PCA) method. For each pathway, AES-PCA was applied to the expression levels of genes belonging to that pathway to generate pathway-specific principal component (PC) scores. In this analysis, the first principal component (PC1) was used to summarize each pathway. The pathway PC scores are c1onstructed without using the survival outcome.
 
 For overall survival, each pathway was evaluated separately using a Cox proportional hazards model:
 
@@ -130,11 +130,13 @@ Several pathways had nominal raw p-values below 0.05. However, after adjustment 
 
 The top-ranked pathway had a raw p-value of approximately 0.0034, but its BH-adjusted p-value was approximately 0.427. Therefore, the top pathways should be interpreted as the most strongly ranked pathways rather than statistically significant pathways after multiple-testing correction.
 
-### Gene Set Variation Analysis (GSVA)
+## Gene Set Variation Analysis (GSVA)
 
-GSVA will also be used to generate a sample-specific activity score for each pathway. This provides an alternative pathway representation to PCA.
+Gene Set Variation Analysis (GSVA) is a non-parametric and unsupervised method that transforms a gene-by-sample expression matrix into a pathway-by-sample matrix of enrichment scores. Each patient receives one score for each pathway, representing relative pathway activity across the sample population.
 
-The predictive performance of PCA-based and GSVA-based pathway scores will then be compared.
+GSVA uses gene-expression distributions, within-sample ranking, and a Kolmogorov--Smirnov-like random walk to calculate pathway enrichment scores. These scores can then be used as predictors in downstream models such as Cox proportional hazards regression for survival analysis.
+
+In this study, GSVA will be used as a pathway-level scoring method and compared with PCA-based pathway scores for survival prediction. @hanzelmann2013
 
 ## Predictive Models
 
@@ -181,4 +183,4 @@ The final comparison will consider combinations of:
 -   predictive model,
 -   and dataset.
 
-# References
+# References :
