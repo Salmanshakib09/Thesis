@@ -87,10 +87,7 @@ Several approaches for defining groups of genes will be considered:
 -   Gene Ontology (GO): Gene Ontology classifies genes according to three major categories: Biological Process, Molecular Function, and Cellular Component. Unlike traditional pathway databases, GO focuses on functional annotations rather than only defined signaling or metabolic pathways. GO gene sets can therefore be large and highly overlapping.
 -   MSigDB Hallmark Gene Sets: The Hallmark collection contains compact gene sets representing well-defined biological states and processes, such as cell proliferation, inflammation, apoptosis, and immune response. These gene sets were designed to reduce redundancy among larger MSigDB collections and provide more interpretable biological signals.
 -   Randomized pathway collections: Randomized pathways are artificial gene sets created by shuffling genes while preserving features such as pathway size. They serve as a negative control to test whether real biological pathway structure provides better predictive information than arbitrary gene groupings.
-
-### WGCNA
-
-(Weighted Gene Co-expression Network Analysis) is a data-driven method that groups genes into modules based on similar expression patterns across samples. Unlike curated pathway databases such as KEGG or Reactome, WGCNA does not rely on predefined biological knowledge; instead, it identifies groups of genes that tend to be co-expressed in the observed dataset. Each module can be summarized by a module eigengene, which represents the main expression pattern of that group. In this study, WGCNA-derived modules can be treated as an alternative pathway collection and compared with curated and randomized gene sets.
+-   (Weighted Gene Co-expression Network Analysis) is a data-driven method that groups genes into modules based on similar expression patterns across samples. Unlike curated pathway databases such as KEGG or Reactome, WGCNA does not rely on predefined biological knowledge; instead, it identifies groups of genes that tend to be co-expressed in the observed dataset. Each module can be summarized by a module eigengene, which represents the main expression pattern of that group. In this study, WGCNA-derived modules can be treated as an alternative pathway collection and compared with curated and randomized gene sets.
 
 ## Pathway-Level Scoring
 
@@ -138,7 +135,7 @@ Gene Set Variation Analysis (GSVA) is a non-parametric and unsupervised method t
 
 GSVA uses gene-expression distributions, within-sample ranking, and a Kolmogorov--Smirnov-like random walk to calculate pathway enrichment scores. These scores can then be used as predictors in downstream models such as Cox proportional hazards regression for survival analysis.
 
-In this study, GSVA will be used as a pathway-level scoring method and compared with PCA-based pathway scores for survival prediction. 
+In this study, GSVA will be used as a pathway-level scoring method and compared with PCA-based pathway scores for survival prediction.
 
 ## Predictive Models
 
