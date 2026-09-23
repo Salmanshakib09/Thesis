@@ -2,6 +2,7 @@
 title: "Thesis - Title"
 author: "Salman Shakib"
 format: pdf
+number-sections: true
 editor: visual
 bibliography: references.bib
 csl: bioinformatics.csl
@@ -17,22 +18,22 @@ Paper @segura2019.
 
 Compared predictive models built in **gene space** versus **pathway space**. - Used **PCA** to summarize genes within each pathway; PC1 was used as the pathway score.
 
--   Pathway-based models were generally **more robust to added noise** than gene-level models.
--   Surprisingly, **randomized pathways had similar predictive accuracy and robustness** to real biological pathways.
--   However, models based on real pathways were **more parsimonious**, with fewer pathways contributing strongly.
--   Results were consistent across different datasets and modeling approaches.
+- Pathway-based models were generally **more robust to added noise** than gene-level models.
+- Surprisingly, **randomized pathways had similar predictive accuracy and robustness** to real biological pathways.
+- However, models based on real pathways were **more parsimonious**, with fewer pathways contributing strongly.
+- Results were consistent across different datasets and modeling approaches.
 
 ### Zheng et al. (2020)
 
 Paper by @zheng2020.
 
--   Compared **gene-level** and **pathway-level** models for cancer survival prediction.
--   Used TCGA gene-expression data and **MSigDB Hallmark pathways**.
--   Used **GSVA** to create sample-specific pathway scores.
--   Applied **Lasso-penalized Cox regression** for survival prediction.
--   Gene-level and pathway-level models had similar predictive performance on real TCGA data.
--   Pathway-level models were generally **more stable, more parsimonious, faster, and easier to interpret**.
--   Simulations showed that **inter-gene correlation strongly affects predictive performance**; when correlation was removed, pathway-level models performed much better than gene-level models.
+- Compared **gene-level** and **pathway-level** models for cancer survival prediction.
+- Used TCGA gene-expression data and **MSigDB Hallmark pathways**.
+- Used **GSVA** to create sample-specific pathway scores.
+- Applied **Lasso-penalized Cox regression** for survival prediction.
+- Gene-level and pathway-level models had similar predictive performance on real TCGA data.
+- Pathway-level models were generally **more stable, more parsimonious, faster, and easier to interpret**.
+- Simulations showed that **inter-gene correlation strongly affects predictive performance**; when correlation was removed, pathway-level models performed much better than gene-level models.
 
 ### Relevance to This Thesis
 
@@ -54,69 +55,59 @@ The complete analysis will be repeated across multiple gene-expression datasets 
 
 Consider a gene expression dataset collected from $n$ subjects, where expression is measured for $p$ genes. Let
 
-$$
-\mathbf{X} \in \mathbb{R}^{n \times p}
-$$
+$$\mathbf{X} \in \mathbb{R}^{n \times p}$$
 
 denote the observed gene expression matrix, where $X_{ij}$ is the expression value of gene $j$ for subject $i$. For each subject $i \in \{1,\ldots,n\}$, let $T_i$ denote the observed overall survival or follow-up time and let $\delta_i \in \{0,1\}$ denote the event indicator, where $\delta_i = 1$ indicates an observed death and $\delta_i = 0$ indicates a censored observation. The survival outcome for subject $i$ is therefore represented by $Y_i = (T_i,\delta_i)$.
 
 Let $\mathcal{G} \subseteq \mathcal{P}(\{1,\ldots,p\})$ denote a collection of pathways, where $\mathcal{P}$ denotes the power set. For a pathway $G \in \mathcal{G}$, the elements of $G$ index the genes belonging to that pathway, and
 
-$$
-\mathbf{X}(G) \in \mathbb{R}^{n \times |G|}
-$$
+$$\mathbf{X}(G) \in \mathbb{R}^{n \times |G|}$$
 
 denotes the gene expression matrix restricted to the genes contained in $G$. Different pathway collections, such as KEGG, Reactome, and Gene Ontology, may define different sets of pathways and different gene memberships within those pathways.
 
 For each pathway $G \in \mathcal{G}$, a pathway-level scoring method is used to summarize $\mathbf{X}(G)$ into one or more subject-specific pathway features. Let
 
-$$
-\mathbf{Z}_{iG}^{(s)}
+$$\mathbf{Z}_{iG}^{(s)}
 =
 \left(
 Z_{iG1}^{(s)},
 \ldots,
 Z_{iGK_s}^{(s)}
 \right)^T
-\in \mathbb{R}^{K_s}
-$$
+\in \mathbb{R}^{K_s}$$
 
 denote the pathway-level representation for subject $i$ and pathway $G$ obtained using scoring method $s$, where $K_s$ denotes the number of features produced by method $s$.
 
 For PCA, $\mathbf{Z}_{iG}^{(\mathrm{PCA})}$ may contain one or more principal component scores retained for pathway $G$. For GSVA, a single enrichment score is obtained for each subject and pathway, so $K_{\mathrm{GSVA}} = 1$.
 
-## Pathway Collections
+## Pathway Collections {#sec-pathway-collections}
 
 Several approaches for defining groups of genes will be considered:
 
--   KEGG : KEGG (Kyoto Encyclopedia of Genes and Genomes) is a curated pathway database that organizes genes and proteins into biological pathways representing cellular processes, metabolism, signaling, and disease mechanisms. KEGG pathways are widely used in genomic studies because they provide interpretable groups of genes with known functional relationships.
--   Reactome: Reactome is a curated biological pathway database that describes molecular reactions and signaling events in detail. Its pathways are organized hierarchically, allowing broad biological processes to be divided into more specific subprocesses. Reactome often provides more detailed pathway definitions than KEGG.
--   Gene Ontology (GO): Gene Ontology classifies genes according to three major categories: Biological Process, Molecular Function, and Cellular Component. Unlike traditional pathway databases, GO focuses on functional annotations rather than only defined signaling or metabolic pathways. GO gene sets can therefore be large and highly overlapping.
--   MSigDB Hallmark Gene Sets: The Hallmark collection contains compact gene sets representing well-defined biological states and processes, such as cell proliferation, inflammation, apoptosis, and immune response. These gene sets were designed to reduce redundancy among larger MSigDB collections and provide more interpretable biological signals.
--   Randomized pathway collections: Randomized pathways are artificial gene sets created by shuffling genes while preserving features such as pathway size. They serve as a negative control to test whether real biological pathway structure provides better predictive information than arbitrary gene groupings.
--   (Weighted Gene Co-expression Network Analysis) is a data-driven method that groups genes into modules based on similar expression patterns across samples. Unlike curated pathway databases such as KEGG or Reactome, WGCNA does not rely on predefined biological knowledge; instead, it identifies groups of genes that tend to be co-expressed in the observed dataset. Each module can be summarized by a module eigengene, which represents the main expression pattern of that group. In this study, WGCNA-derived modules can be treated as an alternative pathway collection and compared with curated and randomized gene sets.
+- KEGG : KEGG (Kyoto Encyclopedia of Genes and Genomes) is a curated pathway database that organizes genes and proteins into biological pathways representing cellular processes, metabolism, signaling, and disease mechanisms. KEGG pathways are widely used in genomic studies because they provide interpretable groups of genes with known functional relationships.
+- Reactome: Reactome is a curated biological pathway database that describes molecular reactions and signaling events in detail. Its pathways are organized hierarchically, allowing broad biological processes to be divided into more specific subprocesses. Reactome often provides more detailed pathway definitions than KEGG.
+- Gene Ontology (GO): Gene Ontology classifies genes according to three major categories: Biological Process, Molecular Function, and Cellular Component. Unlike traditional pathway databases, GO focuses on functional annotations rather than only defined signaling or metabolic pathways. GO gene sets can therefore be large and highly overlapping.
+- MSigDB Hallmark Gene Sets: The Hallmark collection contains compact gene sets representing well-defined biological states and processes, such as cell proliferation, inflammation, apoptosis, and immune response. These gene sets were designed to reduce redundancy among larger MSigDB collections and provide more interpretable biological signals.
+- Randomized pathway collections: Randomized pathways are artificial gene sets created by shuffling genes while preserving features such as pathway size. They serve as a negative control to test whether real biological pathway structure provides better predictive information than arbitrary gene groupings.
+- (Weighted Gene Co-expression Network Analysis) is a data-driven method that groups genes into modules based on similar expression patterns across samples. Unlike curated pathway databases such as KEGG or Reactome, WGCNA does not rely on predefined biological knowledge; instead, it identifies groups of genes that tend to be co-expressed in the observed dataset. Each module can be summarized by a module eigengene, which represents the main expression pattern of that group. In this study, WGCNA-derived modules can be treated as an alternative pathway collection and compared with curated and randomized gene sets.
 
-## Pathway-Level Scoring
+## Pathway-Level Scoring {#sec-pathway-scoring}
 
 For each pathway collection, gene-expression measurements will be converted into sample-specific pathway scores.
 
-## PathwayPCA Analysis
+### PathwayPCA Analysis
 
 Pathway-level analysis was performed using the `pathwayPCA` R package and the adaptive, elastic-net, sparse principal component analysis (AES-PCA) method. For each pathway, AES-PCA was applied to the expression levels of genes belonging to that pathway to generate pathway-specific principal component (PC) scores. In this analysis, the first principal component (PC1) was used to summarize each pathway. The pathway PC scores are c1onstructed without using the survival outcome.
 
 For overall survival, each pathway was evaluated separately using a Cox proportional hazards model:
 
-$$
-h_i(t) = h_0(t)\exp(\beta PC_{i1}),
-$$
+$$h_i(t) = h_0(t)\exp(\beta PC_{i1}),$$
 
 where $PC_{i1}$ is the PC1 score for patient $i$, $h_0(t)$ is the baseline hazard, and $\beta$ represents the association between the pathway score and the hazard of death.
 
 The null hypothesis for each pathway was
 
-$$
-H_0: \beta = 0,
-$$
+$$H_0: \beta = 0,$$
 
 indicating no association between the pathway PC score and overall survival.
 
@@ -126,7 +117,9 @@ Since many pathways were tested simultaneously, p-values were adjusted using the
 
 The PathwayPCA pathway-testing step evaluates the association between individual pathway scores and survival but does not directly evaluate predictive performance. Measures such as the concordance index, time-dependent AUC, prediction error, or test-set performance must therefore be evaluated separately in subsequent predictive modeling analyses.
 
-## PathwayPCA Results
+#### PathwayPCA Results
+
+[TODO: delete this section?]
 
 PathwayPCA was applied to the TCGA-LUAD gene-expression data using KEGG_MEDICUS pathway definitions and overall survival as the outcome. For each pathway, the first principal component (PC1) was used as the pathway-level score and tested for association with survival using a Cox proportional hazards model.
 
@@ -134,9 +127,9 @@ Several pathways had nominal raw p-values below 0.05. However, after adjustment 
 
 The top-ranked pathway had a raw p-value of approximately 0.0034, but its BH-adjusted p-value was approximately 0.427. Therefore, the top pathways should be interpreted as the most strongly ranked pathways rather than statistically significant pathways after multiple-testing correction.
 
-## Gene Set Variation Analysis (GSVA)
+### Gene Set Variation Analysis (GSVA)
 
-### @hanzelmann2013
+@hanzelmann2013
 
 Gene Set Variation Analysis (GSVA) is a non-parametric and unsupervised method that transforms a gene-by-sample expression matrix into a pathway-by-sample matrix of enrichment scores. Each patient receives one score for each pathway, representing relative pathway activity across the sample population.
 
@@ -144,25 +137,21 @@ GSVA uses gene-expression distributions, within-sample ranking, and a Kolmogorov
 
 In this study, GSVA will be used as a pathway-level scoring method and compared with PCA-based pathway scores for survival prediction.
 
-## Predictive Models
+## Predictive Models {#sec-models}
 
 ### Cox Proportional Hazards Model
 
 The Cox proportional hazards model will be used as a baseline survival model. For patient $i$, the hazard function is
 
-$$
-h(t \mid \mathbf{x}_i)
+$$h(t \mid \mathbf{x}_i)
 =
-h_0(t)\exp(\mathbf{x}_i^T\boldsymbol{\beta}),
-$$
+h_0(t)\exp(\mathbf{x}_i^T\boldsymbol{\beta}),$$
 
 where $h_0(t)$ is the baseline hazard function, $\mathbf{x}_i$ represents the pathway-level predictors, and $\boldsymbol{\beta}$ contains the corresponding regression coefficients.
 
 The Cox model relates the pathway-level predictors to the instantaneous risk of experiencing the event. The exponentiated regression coefficient,
 
-$$
-\exp(\beta_j),
-$$
+$$\exp(\beta_j),$$
 
 is interpreted as a hazard ratio. A hazard ratio greater than 1 indicates an increased hazard, whereas a hazard ratio less than 1 indicates a decreased hazard, holding the other predictors constant.
 
@@ -174,47 +163,50 @@ The accelerated failure time (AFT) model will also be considered as an alternati
 
 The general AFT model can be written as
 
-$$
-\log(T_i)
+$$\log(T_i)
 =
 \beta_0
 +
 \mathbf{x}_i^T\boldsymbol{\beta}
 +
-\sigma\epsilon_i,
-$$
+\sigma\epsilon_i,$$
 
 where $T_i$ represents the survival time of patient $i$, $\mathbf{x}_i$ represents the pathway-level predictors, $\boldsymbol{\beta}$ contains the regression coefficients, $\sigma$ is a scale parameter, and $\epsilon_i$ represents the model error term whose distribution depends on the chosen AFT model.
 
 Exponentiating a regression coefficient gives the time ratio,
 
-$$
-\exp(\beta_j).
-$$
+$$\exp(\beta_j).$$
 
 A time ratio greater than 1 indicates that survival time is multiplied by a factor greater than 1 as the predictor increases, whereas a time ratio less than 1 indicates shorter survival time.
 
-A Weibull AFT model will initially be considered. Alternative distributions, such as log-normal and log-logistic, may also be examined when appropriate.
+[TODO] A Weibull AFT model will initially be considered. Alternative distributions, such as log-normal and log-logistic, may also be examined when appropriate.
 
-### Predictive Performance Evaluation
+## Performance Evaluation Metrics {#sec-metrics}
 
-The predictive performance of the survival models will be evaluated using cross-validation, with the same data partitions used for all models to ensure a fair comparison.
+[TODO: add formulas for all metrics. Including C-index, Brier score, IBS, etc. If some metrics can only be used for certain models, make that clear. E.g. Brier score only for AFT. Include references where appropriate. For Brier score, look at https://link.springer.com/article/10.1186/s13062-018-0213-x#Sec2]
 
-Model discrimination will be assessed using Harrell's concordance index (C-index), which measures the ability of a model to correctly rank patients according to their predicted survival risk. Higher C-index values indicate better discrimination.
+Model discrimination will be assessed using Harrell's concordance index (C-index), which measures the ability of a model to correctly rank patients according to their actual survival risk. Higher C-index values indicate better discrimination.
 
 Prediction error will be evaluated using the Brier score and the integrated Brier score (IBS). The Brier score measures the accuracy of predicted survival probabilities at a given time point, while the IBS summarizes prediction error over a range of follow-up times. Lower values indicate better predictive performance.
 
 Time-dependent area under the ROC curve (AUC) may also be used to evaluate discrimination at selected follow-up times.
 
-All pathway scoring, feature selection, and model fitting will be performed within the training portion of each cross-validation fold to avoid information leakage. Predictive performance will then be assessed using the corresponding held-out observations.
+
+## Model fitting and evaluation
+
+[TODO: describe k-fold cross-validation. Revise: The predictive performance of the survival models will be evaluated using cross-validation, with the same data partitions used for all models to ensure a fair comparison. Model fitting will be performed within the training portion of each cross-validation fold to avoid information leakage. Predictive performance will then be assessed using the corresponding held-out observations.]
+
+[TODO] Models will be fit for all pathways in each pathway collection listed in @sec-pathway-collections, using each pathway-level scoring methods (@sec-pathway-scoring), and for each model described in @sec-models. Predictive performance will be assessed using the metrics described in @sec-metrics. 
+
+
 
 ### Penalized Regression
 
 Three penalized regression approaches will be compared:
 
--   **LASSO regression**, which can shrink some coefficients exactly to zero and therefore perform variable selection.
--   **Ridge regression**, which shrinks coefficients toward zero but generally retains all predictors.
--   **Elastic Net**, which combines the LASSO and ridge penalties.
+- **LASSO regression**, which can shrink some coefficients exactly to zero and therefore perform variable selection.
+- **Ridge regression**, which shrinks coefficients toward zero but generally retains all predictors.
+- **Elastic Net**, which combines the LASSO and ridge penalties.
 
 These methods will allow comparison of different approaches for handling a potentially large number of correlated pathway predictors.
 
@@ -234,19 +226,19 @@ Where necessary, tuning parameters will be selected using cross-validation withi
 
 The models will be compared using measures of:
 
--   predictive performance,
--   model stability,
--   model complexity or number of selected predictors,
--   computational efficiency,
--   and interpretability.
+- predictive performance,
+- model stability,
+- model complexity or number of selected predictors,
+- computational efficiency,
+- and interpretability.
 
 ## Comparison Across Methods
 
 The final comparison will consider combinations of:
 
--   pathway collection,
--   pathway-scoring method,
--   predictive model,
--   and dataset.
+- pathway collection,
+- pathway-scoring method,
+- predictive model,
+- and dataset.
 
 # References :
