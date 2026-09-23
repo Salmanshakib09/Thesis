@@ -1,5 +1,5 @@
 ---
-title: "Thesis"
+title: "Thesis - Title"
 author: "Salman Shakib"
 format: pdf
 editor: visual
