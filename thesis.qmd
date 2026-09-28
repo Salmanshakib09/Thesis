@@ -117,15 +117,6 @@ Since many pathways were tested simultaneously, p-values were adjusted using the
 
 The PathwayPCA pathway-testing step evaluates the association between individual pathway scores and survival but does not directly evaluate predictive performance. Measures such as the concordance index, time-dependent AUC, prediction error, or test-set performance must therefore be evaluated separately in subsequent predictive modeling analyses.
 
-#### PathwayPCA Results
-
-[TODO: delete this section?]
-
-PathwayPCA was applied to the TCGA-LUAD gene-expression data using KEGG_MEDICUS pathway definitions and overall survival as the outcome. For each pathway, the first principal component (PC1) was used as the pathway-level score and tested for association with survival using a Cox proportional hazards model.
-
-Several pathways had nominal raw p-values below 0.05. However, after adjustment for multiple testing using the Benjamini-Hochberg false discovery rate procedure, none of the pathways remained statistically significant at an FDR threshold of 0.05.
-
-The top-ranked pathway had a raw p-value of approximately 0.0034, but its BH-adjusted p-value was approximately 0.427. Therefore, the top pathways should be interpreted as the most strongly ranked pathways rather than statistically significant pathways after multiple-testing correction.
 
 ### Gene Set Variation Analysis (GSVA)
 
@@ -179,6 +170,7 @@ $$\exp(\beta_j).$$
 
 A time ratio greater than 1 indicates that survival time is multiplied by a factor greater than 1 as the predictor increases, whereas a time ratio less than 1 indicates shorter survival time.
 
+<<<<<<< HEAD
 [TODO] A Weibull AFT model will initially be considered. Alternative distributions, such as log-normal and log-logistic, may also be examined when appropriate.
 
 ## Performance Evaluation Metrics {#sec-metrics}
@@ -186,11 +178,21 @@ A time ratio greater than 1 indicates that survival time is multiplied by a fact
 [TODO: add formulas for all metrics. Including C-index, Brier score, IBS, etc. If some metrics can only be used for certain models, make that clear. E.g. Brier score only for AFT. Include references where appropriate. For Brier score, look at https://link.springer.com/article/10.1186/s13062-018-0213-x#Sec2]
 
 Model discrimination will be assessed using Harrell's concordance index (C-index), which measures the ability of a model to correctly rank patients according to their actual survival risk. Higher C-index values indicate better discrimination.
+=======
+A Weibull accelerated failure time (AFT) model will be used as the primary parametric survival model. Alternative distributions, including log-normal and log-logistic, may be considered if the Weibull model provides an inadequate fit to the survival data.
 
-Prediction error will be evaluated using the Brier score and the integrated Brier score (IBS). The Brier score measures the accuracy of predicted survival probabilities at a given time point, while the IBS summarizes prediction error over a range of follow-up times. Lower values indicate better predictive performance.
+## Performance Evaluation Metrics {#sec-metrics}
 
-Time-dependent area under the ROC curve (AUC) may also be used to evaluate discrimination at selected follow-up times.
+\[TODO: add formulas for all metrics. Including C-index, Brier score, IBS, etc. If some metrics can only be used for certain models, make that clear. E.g. Brier score only for AFT. Include references where appropriate. For Brier score, look at https://link.springer.com/article/10.1186/s13062-018-0213-x#Sec2\]
 
+### Concordance Index (C-index)
+>>>>>>> d533319 (Update Performance Evaluation Method)
+
+@uno2011 Model discrimination will be evaluated using Uno's concordance index (C-index). The C-index measures the ability of a survival model to correctly rank patients according to their predicted risk. A pair is concordant when the patient with the shorter survival time is assigned a higher predicted risk.
+
+Because survival outcomes may be right-censored, Uno's C-index will be used. Unlike the conventional C-index, Uno's estimator uses inverse probability of censoring weighting (IPCW) to account for censoring.
+
+<<<<<<< HEAD
 
 ## Model fitting and evaluation
 
@@ -199,6 +201,88 @@ Time-dependent area under the ROC curve (AUC) may also be used to evaluate discr
 [TODO] Models will be fit for all pathways in each pathway collection listed in @sec-pathway-collections, using each pathway-level scoring methods (@sec-pathway-scoring), and for each model described in @sec-models. Predictive performance will be assessed using the metrics described in @sec-metrics. 
 
 
+=======
+For a prespecified time horizon $\tau$, Uno's C-index is estimated as
+
+$$
+\widehat{C}_{\tau}
+=
+\frac{
+\sum_{i=1}^{n}\sum_{j=1}^{n}
+\frac{\Delta_i}{\widehat{G}(X_i)^2}
+I(X_i<X_j,\;X_i<\tau)
+I(\widehat{\beta}^{T}Z_i>\widehat{\beta}^{T}Z_j)
+}{
+\sum_{i=1}^{n}\sum_{j=1}^{n}
+\frac{\Delta_i}{\widehat{G}(X_i)^2}
+I(X_i<X_j,\;X_i<\tau)
+}.
+$$
+
+Here, $X_i$ is the observed survival time for patient $i$, $\Delta_i$ is the event indicator, $\widehat{G}(X_i)$ is the estimated probability of remaining uncensored at time $X_i$, and $\widehat{\beta}^{T}Z_i$ is the predicted risk score. The indicator function $I(\cdot)$ equals 1 when the specified condition is satisfied and 0 otherwise. Higher C-index values indicate better discrimination.
+
+The time horizon $\tau$ will be selected to avoid unstable estimation in the tail of the survival distribution, where relatively few patients may remain under observation.
+
+### Brier Score
+
+The Brier score evaluates the accuracy of predicted survival probabilities at a specific time point. For right-censored survival data, inverse probability of censoring weighting (IPCW) is used to account for censoring [@graf1999; @gerds2006].
+
+At time $t$, the censoring-adjusted Brier score is
+
+$$
+\widehat{BS}(t)
+=
+\frac{1}{n}
+\sum_{i=1}^{n}
+\left[
+\frac{I(X_i \leq t,\Delta_i=1)}
+{\widehat{G}(X_i)}
+\left(0-\widehat{S}_i(t)\right)^2
++
+\frac{I(X_i>t)}
+{\widehat{G}(t)}
+\left(1-\widehat{S}_i(t)\right)^2
+\right].
+$$
+
+where:
+
+-   $n$ is the total number of patients.
+-   $X_i$ is the observed survival or follow-up time for patient $i$.
+-   $\Delta_i$ is the event indicator, where $\Delta_i=1$ indicates that the event was observed and $\Delta_i=0$ indicates censoring.
+-   $t$ is the time point at which prediction error is evaluated.
+-   $\widehat{S}_i(t)$ is the predicted probability that patient $i$ survives beyond time $t$.
+-   $\widehat{G}(t)$ is the estimated probability of remaining uncensored beyond time $t$.
+-   $I(\cdot)$ is an indicator function that equals 1 when the specified condition is satisfied and 0 otherwise.
+
+The first term represents patients who experience the event by time $t$, while the second term represents patients who are known to survive beyond time $t$. The inverse probability of censoring weights adjust for incomplete observation due to censoring. A lower Brier score indicates lower prediction error.
+
+### Integrated Brier Score (IBS)
+
+The integrated Brier score (IBS) summarizes prediction error over a specified time interval rather than at a single time point [@graf1999; @gerds2006].
+
+$$
+IBS(\tau)
+=
+\frac{1}{\tau}
+\int_{0}^{\tau}
+\widehat{BS}(t)\,dt.
+$$
+
+where:
+
+-   $\widehat{BS}(t)$ is the Brier score at time $t$.
+-   $\tau$ is the upper limit of the evaluation time interval.
+-   $\int_{0}^{\tau}\widehat{BS}(t)\,dt$ represents the accumulated prediction error over the interval from $0$ to $\tau$.
+
+Thus, the IBS represents the average prediction error over the specified time interval. Lower IBS values indicate better overall predictive accuracy. \$\$ Time-dependent area under the ROC curve (AUC) may also be used to evaluate discrimination at selected follow-up times.
+
+## Model fitting and evaluation
+
+\[TODO: describe k-fold cross-validation. Revise: The predictive performance of the survival models will be evaluated using cross-validation, with the same data partitions used for all models to ensure a fair comparison. Model fitting will be performed within the training portion of each cross-validation fold to avoid information leakage. Predictive performance will then be assessed using the corresponding held-out observations.\]
+
+\[TODO\] Models will be fit for all pathways in each pathway collection listed in @sec-pathway-collections, using each pathway-level scoring methods (@sec-pathway-scoring), and for each model described in @sec-models. Predictive performance will be assessed using the metrics described in @sec-metrics.
+>>>>>>> d533319 (Update Performance Evaluation Method)
 
 ### Penalized Regression
 
