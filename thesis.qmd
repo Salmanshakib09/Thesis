@@ -18,22 +18,22 @@ Paper @segura2019.
 
 Compared predictive models built in **gene space** versus **pathway space**. - Used **PCA** to summarize genes within each pathway; PC1 was used as the pathway score.
 
-- Pathway-based models were generally **more robust to added noise** than gene-level models.
-- Surprisingly, **randomized pathways had similar predictive accuracy and robustness** to real biological pathways.
-- However, models based on real pathways were **more parsimonious**, with fewer pathways contributing strongly.
-- Results were consistent across different datasets and modeling approaches.
+-   Pathway-based models were generally **more robust to added noise** than gene-level models.
+-   Surprisingly, **randomized pathways had similar predictive accuracy and robustness** to real biological pathways.
+-   However, models based on real pathways were **more parsimonious**, with fewer pathways contributing strongly.
+-   Results were consistent across different datasets and modeling approaches.
 
 ### Zheng et al. (2020)
 
 Paper by @zheng2020.
 
-- Compared **gene-level** and **pathway-level** models for cancer survival prediction.
-- Used TCGA gene-expression data and **MSigDB Hallmark pathways**.
-- Used **GSVA** to create sample-specific pathway scores.
-- Applied **Lasso-penalized Cox regression** for survival prediction.
-- Gene-level and pathway-level models had similar predictive performance on real TCGA data.
-- Pathway-level models were generally **more stable, more parsimonious, faster, and easier to interpret**.
-- Simulations showed that **inter-gene correlation strongly affects predictive performance**; when correlation was removed, pathway-level models performed much better than gene-level models.
+-   Compared **gene-level** and **pathway-level** models for cancer survival prediction.
+-   Used TCGA gene-expression data and **MSigDB Hallmark pathways**.
+-   Used **GSVA** to create sample-specific pathway scores.
+-   Applied **Lasso-penalized Cox regression** for survival prediction.
+-   Gene-level and pathway-level models had similar predictive performance on real TCGA data.
+-   Pathway-level models were generally **more stable, more parsimonious, faster, and easier to interpret**.
+-   Simulations showed that **inter-gene correlation strongly affects predictive performance**; when correlation was removed, pathway-level models performed much better than gene-level models.
 
 ### Relevance to This Thesis
 
@@ -84,12 +84,12 @@ For PCA, $\mathbf{Z}_{iG}^{(\mathrm{PCA})}$ may contain one or more principal co
 
 Several approaches for defining groups of genes will be considered:
 
-- KEGG : KEGG (Kyoto Encyclopedia of Genes and Genomes) is a curated pathway database that organizes genes and proteins into biological pathways representing cellular processes, metabolism, signaling, and disease mechanisms. KEGG pathways are widely used in genomic studies because they provide interpretable groups of genes with known functional relationships.
-- Reactome: Reactome is a curated biological pathway database that describes molecular reactions and signaling events in detail. Its pathways are organized hierarchically, allowing broad biological processes to be divided into more specific subprocesses. Reactome often provides more detailed pathway definitions than KEGG.
-- Gene Ontology (GO): Gene Ontology classifies genes according to three major categories: Biological Process, Molecular Function, and Cellular Component. Unlike traditional pathway databases, GO focuses on functional annotations rather than only defined signaling or metabolic pathways. GO gene sets can therefore be large and highly overlapping.
-- MSigDB Hallmark Gene Sets: The Hallmark collection contains compact gene sets representing well-defined biological states and processes, such as cell proliferation, inflammation, apoptosis, and immune response. These gene sets were designed to reduce redundancy among larger MSigDB collections and provide more interpretable biological signals.
-- Randomized pathway collections: Randomized pathways are artificial gene sets created by shuffling genes while preserving features such as pathway size. They serve as a negative control to test whether real biological pathway structure provides better predictive information than arbitrary gene groupings.
-- (Weighted Gene Co-expression Network Analysis) is a data-driven method that groups genes into modules based on similar expression patterns across samples. Unlike curated pathway databases such as KEGG or Reactome, WGCNA does not rely on predefined biological knowledge; instead, it identifies groups of genes that tend to be co-expressed in the observed dataset. Each module can be summarized by a module eigengene, which represents the main expression pattern of that group. In this study, WGCNA-derived modules can be treated as an alternative pathway collection and compared with curated and randomized gene sets.
+-   KEGG : KEGG (Kyoto Encyclopedia of Genes and Genomes) is a curated pathway database that organizes genes and proteins into biological pathways representing cellular processes, metabolism, signaling, and disease mechanisms. KEGG pathways are widely used in genomic studies because they provide interpretable groups of genes with known functional relationships.
+-   Reactome: Reactome is a curated biological pathway database that describes molecular reactions and signaling events in detail. Its pathways are organized hierarchically, allowing broad biological processes to be divided into more specific subprocesses. Reactome often provides more detailed pathway definitions than KEGG.
+-   Gene Ontology (GO): Gene Ontology classifies genes according to three major categories: Biological Process, Molecular Function, and Cellular Component. Unlike traditional pathway databases, GO focuses on functional annotations rather than only defined signaling or metabolic pathways. GO gene sets can therefore be large and highly overlapping.
+-   MSigDB Hallmark Gene Sets: The Hallmark collection contains compact gene sets representing well-defined biological states and processes, such as cell proliferation, inflammation, apoptosis, and immune response. These gene sets were designed to reduce redundancy among larger MSigDB collections and provide more interpretable biological signals.
+-   Randomized pathway collections: Randomized pathways are artificial gene sets created by shuffling genes while preserving features such as pathway size. They serve as a negative control to test whether real biological pathway structure provides better predictive information than arbitrary gene groupings.
+-   (Weighted Gene Co-expression Network Analysis) is a data-driven method that groups genes into modules based on similar expression patterns across samples. Unlike curated pathway databases such as KEGG or Reactome, WGCNA does not rely on predefined biological knowledge; instead, it identifies groups of genes that tend to be co-expressed in the observed dataset. Each module can be summarized by a module eigengene, which represents the main expression pattern of that group. In this study, WGCNA-derived modules can be treated as an alternative pathway collection and compared with curated and randomized gene sets.
 
 ## Pathway-Level Scoring {#sec-pathway-scoring}
 
@@ -169,38 +169,18 @@ $$\exp(\beta_j).$$
 
 A time ratio greater than 1 indicates that survival time is multiplied by a factor greater than 1 as the predictor increases, whereas a time ratio less than 1 indicates shorter survival time.
 
-<<<<<<< HEAD
-[TODO] A Weibull AFT model will initially be considered. Alternative distributions, such as log-normal and log-logistic, may also be examined when appropriate.
-
-## Performance Evaluation Metrics {#sec-metrics}
-
-[TODO: add formulas for all metrics. Including C-index, Brier score, IBS, etc. If some metrics can only be used for certain models, make that clear. E.g. Brier score only for AFT. Include references where appropriate. For Brier score, look at https://link.springer.com/article/10.1186/s13062-018-0213-x#Sec2]
-
-Model discrimination will be assessed using Harrell's concordance index (C-index), which measures the ability of a model to correctly rank patients according to their actual survival risk. Higher C-index values indicate better discrimination.
-=======
-A Weibull accelerated failure time (AFT) model will be used as the primary parametric survival model. Alternative distributions, including log-normal and log-logistic, may be considered if the Weibull model provides an inadequate fit to the survival data.
+\[TODO\] A Weibull AFT model will initially be considered. Alternative distributions, such as log-normal and log-logistic, may also be examined when appropriate.
 
 ## Performance Evaluation Metrics {#sec-metrics}
 
 \[TODO: add formulas for all metrics. Including C-index, Brier score, IBS, etc. If some metrics can only be used for certain models, make that clear. E.g. Brier score only for AFT. Include references where appropriate. For Brier score, look at https://link.springer.com/article/10.1186/s13062-018-0213-x#Sec2\]
 
 ### Concordance Index (C-index)
->>>>>>> d533319 (Update Performance Evaluation Method)
 
 @uno2011 Model discrimination will be evaluated using Uno's concordance index (C-index). The C-index measures the ability of a survival model to correctly rank patients according to their predicted risk. A pair is concordant when the patient with the shorter survival time is assigned a higher predicted risk.
 
 Because survival outcomes may be right-censored, Uno's C-index will be used. Unlike the conventional C-index, Uno's estimator uses inverse probability of censoring weighting (IPCW) to account for censoring.
 
-<<<<<<< HEAD
-
-## Model fitting and evaluation
-
-[TODO: describe k-fold cross-validation. Revise: The predictive performance of the survival models will be evaluated using cross-validation, with the same data partitions used for all models to ensure a fair comparison. Model fitting will be performed within the training portion of each cross-validation fold to avoid information leakage. Predictive performance will then be assessed using the corresponding held-out observations.]
-
-[TODO] Models will be fit for all pathways in each pathway collection listed in @sec-pathway-collections, using each pathway-level scoring methods (@sec-pathway-scoring), and for each model described in @sec-models. Predictive performance will be assessed using the metrics described in @sec-metrics. 
-
-
-=======
 For a prespecified time horizon $\tau$, Uno's C-index is estimated as
 
 $$
@@ -280,10 +260,8 @@ Thus, the IBS represents the average prediction error over the specified time in
 
 Predictive performance will be evaluated using $k$-fold cross-validation. The dataset will be randomly divided into $k$ approximately equal-sized folds. For each iteration, $k-1$ folds will be used as the training set and the remaining fold will be used as the test set. This process will be repeated until each fold has served once as the test set.
 
-<<<<<<< HEAD
 \[TODO\] Models will be fit for all pathways in each pathway collection listed in @sec-pathway-collections, using each pathway-level scoring methods (@sec-pathway-scoring), and for each model described in @sec-models. Predictive performance will be assessed using the metrics described in @sec-metrics.
->>>>>>> d533319 (Update Performance Evaluation Method)
-=======
+
 The same cross-validation folds will be used across all modeling approaches to ensure a fair comparison. All model fitting and data-dependent estimation will be performed using only the training data within each fold to avoid information leakage. The fitted model will then be used to generate predictions for patients in the corresponding held-out test fold.
 
 Predictive performance will be calculated from the held-out predictions using the performance metrics described in @sec-metrics. The performance estimates across the cross-validation folds will then be summarized to evaluate and compare the different modeling approaches.
@@ -293,15 +271,14 @@ Models will be fitted for each combination of pathway collection, pathway-level 
 For example, combinations may include KEGG pathways scored using PCA and modeled using Cox proportional hazards, KEGG pathways scored using GSVA and modeled using an accelerated failure time (AFT) model, or Reactome pathways scored using PCA and modeled using Cox proportional hazards. The same procedure will be repeated systematically across all specified pathway collections, scoring methods, and predictive models.
 
 Predictive performance for each combination will be evaluated using the performance metrics described in @sec-metrics.
->>>>>>> 4a9f826 (Update Performance Evaluation Method)
 
 ### Penalized Regression
 
 Three penalized regression approaches will be compared:
 
-- **LASSO regression**, which can shrink some coefficients exactly to zero and therefore perform variable selection.
-- **Ridge regression**, which shrinks coefficients toward zero but generally retains all predictors.
-- **Elastic Net**, which combines the LASSO and ridge penalties.
+-   **LASSO regression**, which can shrink some coefficients exactly to zero and therefore perform variable selection.
+-   **Ridge regression**, which shrinks coefficients toward zero but generally retains all predictors.
+-   **Elastic Net**, which combines the LASSO and ridge penalties.
 
 These methods will allow comparison of different approaches for handling a potentially large number of correlated pathway predictors.
 
@@ -321,19 +298,19 @@ Where necessary, tuning parameters will be selected using cross-validation withi
 
 The models will be compared using measures of:
 
-- predictive performance,
-- model stability,
-- model complexity or number of selected predictors,
-- computational efficiency,
-- and interpretability.
+-   predictive performance,
+-   model stability,
+-   model complexity or number of selected predictors,
+-   computational efficiency,
+-   and interpretability.
 
 ## Comparison Across Methods
 
 The final comparison will consider combinations of:
 
-- pathway collection,
-- pathway-scoring method,
-- predictive model,
-- and dataset.
+-   pathway collection,
+-   pathway-scoring method,
+-   predictive model,
+-   and dataset.
 
 # References :
