@@ -256,21 +256,17 @@ where:
 
 Thus, the IBS represents the average prediction error over the specified time interval. Lower IBS values indicate better overall predictive accuracy.
 
-## Model fitting and evaluation
+## Model Fitting and Evaluation
 
-Predictive performance will be evaluated using $k$-fold cross-validation. The dataset will be randomly divided into $k$ approximately equal-sized folds. For each iteration, $k-1$ folds will be used as the training set and the remaining fold will be used as the test set. This process will be repeated until each fold has served once as the test set.
+Predictive performance will be evaluated using $k$-fold cross-validation. The data will be divided into $k$ approximately equal-sized folds. In each iteration, $k-1$ folds will be used as the training set and the remaining fold will be used as the test set. This process will be repeated until each fold has served once as the test set.
 
-\[TODO\] Models will be fit for all pathways in each pathway collection listed in @sec-pathway-collections, using each pathway-level scoring methods (@sec-pathway-scoring), and for each model described in @sec-models. Predictive performance will be assessed using the metrics described in @sec-metrics.
+The same cross-validation partitions will be used across all modeling approaches to ensure a fair comparison. Model fitting and any data-dependent estimation will be performed using only the training data within each fold to avoid information leakage. The fitted models will then be used to generate predictions for patients in the corresponding held-out test fold.
 
-The same cross-validation folds will be used across all modeling approaches to ensure a fair comparison. All model fitting and data-dependent estimation will be performed using only the training data within each fold to avoid information leakage. The fitted model will then be used to generate predictions for patients in the corresponding held-out test fold.
+Models will be fitted for each combination of pathway collection, pathway-level scoring method, and predictive model described in the previous sections. For each pathway collection, pathway-level scores will first be generated using the scoring methods described in @sec-pathway-scoring. These scores will then be used as predictors in the models described in @sec-models.
 
-Predictive performance will be calculated from the held-out predictions using the performance metrics described in @sec-metrics. The performance estimates across the cross-validation folds will then be summarized to evaluate and compare the different modeling approaches.
+For example, combinations may include **KEGG + PCA + Cox, PH** **KEGG + GSVA + AFT**, **Reactome + PCA + Cox PH** and **Reactome + GSVA + AFT**. The same procedure will be repeated systematically across the specified pathway collections, pathway-scoring methods, predictive models, and datasets.
 
-Models will be fitted for each combination of pathway collection, pathway-level scoring method, and predictive model described in the previous sections. For each pathway collection, pathway-level scores will first be generated using each scoring method in @sec-pathway-scoring. These scores will then be used as predictors in each of the models described in @sec-models.
-
-For example, combinations may include KEGG pathways scored using PCA and modeled using Cox proportional hazards, KEGG pathways scored using GSVA and modeled using an accelerated failure time (AFT) model, or Reactome pathways scored using PCA and modeled using Cox proportional hazards. The same procedure will be repeated systematically across all specified pathway collections, scoring methods, and predictive models.
-
-Predictive performance for each combination will be evaluated using the performance metrics described in @sec-metrics.
+Predictive performance will be assessed using the performance metrics described in @sec-metrics. Performance will be calculated using predictions from the held-out observations so that model evaluation is based on data that were not used for model fitting.
 
 ### Penalized Regression
 
