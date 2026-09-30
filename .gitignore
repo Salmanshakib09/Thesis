@@ -12,3 +12,5 @@ data/raw/
 data/processed/
 .RDataTmp
 thesis.pdf
+.RdataTmp1
+.RdataTmp2
