@@ -1,4 +1,5 @@
-source("analysis/00_setup.R")
+# Download Reactome pathways from MSigDB and save data/pathways/reactome.gmt.
+# Run this script from the Thesis project root in RStudio.
 
 # Standard GMT: pathway name, description, then gene symbols, separated by tabs.
 write_reactome_gmt <- function(db, path="data/pathways/reactome.gmt") {
@@ -32,13 +33,4 @@ load_reactome <- function() {
        version=unique(db$db_version))
 }
 
-reactome_stage <- function(directory=stage_dir) {
-  input <- read_stage("input", directory)
-  db <- load_reactome()
-  sets <- lapply(db$sets, intersect, rownames(input$expression))
-  eligible <- sort(names(sets)[lengths(sets)>=20 & lengths(sets)<=200])
-  if (length(eligible)<10) stop("Fewer than 10 eligible Reactome pathways")
-  set.seed(seed); selected <- sort(sample(eligible,10))
-  save_stage(list(sets=sets[selected], version=db$version), "reactome", directory)
-}
-if (sys.nframe()==0) reactome_stage()
+reactome_pathways <- load_reactome()
