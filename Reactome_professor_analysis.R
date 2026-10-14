@@ -1,9 +1,3 @@
-# REACTOME PATHWAY ANALYSIS FOR TCGA-LUAD
-# Run this file from your Thesis RStudio project.
-# Each patient has TEN pathway scores. All ten scores enter each model.
-# PCA/GSVA x Cox/AFT = FOUR combined models.
-# This script calls your existing functions without changing their code.
-
 
 # 1. Load packages and your functions ----
 
