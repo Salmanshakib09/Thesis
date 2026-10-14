@@ -2,7 +2,7 @@ library(tidyverse)
 library(pathwayPCA)
 
 # Load function
-source("pathway_functions/03_pathwayPCA_function.R")
+source("pathway_score_functions/03_pathwayPCA_function.R")
 
 
 # Convert patient-by-gene LUAD data into the format your PCA helper expects.

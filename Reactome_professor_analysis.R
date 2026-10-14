@@ -12,18 +12,12 @@ library(survival)
 library(GSVA)
 library(pathwayPCA)
 
-# Support your renamed folder as well as the repository's original folder.
-pathway_function_folder <- c("pathway_score_functions", "pathway_functions") |>
-  keep(dir.exists) |>
-  first()
-
-pathway_function_folder |>
-  file.path("03_pathwayPCA_function.R") |>
+"pathway_score_functions/03_pathwayPCA_function.R" |>
   source()
 
-pathway_function_folder |>
-  file.path("04_GSVA_function.R") |>
+"pathway_score_functions/04_GSVA_function.R" |>
   source()
+
 source("Model Function.R")
 source("metric_functions/01_uno_cindex.R")
 source("metric_functions/02_brier_score.R")
