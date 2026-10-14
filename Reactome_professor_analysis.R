@@ -1,7 +1,7 @@
 # REACTOME PATHWAY ANALYSIS FOR TCGA-LUAD
 # Run this file from your Thesis RStudio project.
-# One pathway score is used in each model:
-# 10 pathways x 2 scoring methods x 2 models = 40 comparisons.
+# Each patient has TEN pathway scores. All ten scores enter each model.
+# PCA/GSVA x Cox/AFT = FOUR combined models.
 # This script calls your existing functions without changing their code.
 
 
@@ -12,8 +12,18 @@ library(survival)
 library(GSVA)
 library(pathwayPCA)
 
-source("pathway_functions/03_pathwayPCA_function.R")
-source("pathway_functions/04_GSVA_function.R")
+# Support your renamed folder as well as the repository's original folder.
+pathway_function_folder <- c("pathway_score_functions", "pathway_functions") |>
+  keep(dir.exists) |>
+  first()
+
+pathway_function_folder |>
+  file.path("03_pathwayPCA_function.R") |>
+  source()
+
+pathway_function_folder |>
+  file.path("04_GSVA_function.R") |>
+  source()
 source("Model Function.R")
 source("metric_functions/01_uno_cindex.R")
 source("metric_functions/02_brier_score.R")
@@ -50,7 +60,7 @@ stopifnot(
 
 # 3. Split patients into training and test groups ----
 
-# Use the same event-balanced 70/30 split for all 40 comparisons.
+# Use the same event-balanced 70/30 split for all four combined models.
 seed <- 20261011L
 set.seed(seed)
 
@@ -240,8 +250,7 @@ evaluation_times <- seq(
 evaluation_horizon <- evaluation_times |>
   last()
 
-evaluate_model <- function(pathway,
-                           scoring,
+evaluate_model <- function(scoring,
                            model,
                            scores) {
 
@@ -341,9 +350,9 @@ evaluate_model <- function(pathway,
     )
 
   list(
-    key = paste(pathway, scoring, model, sep = "|"),
+    key = paste(scoring, model, sep = "|"),
     metrics = tibble(
-      pathway = pathway,
+      n_pathways = length(selected_genes),
       scoring = scoring,
       model = model,
       train_n = nrow(training_data),
@@ -361,7 +370,7 @@ evaluate_model <- function(pathway,
       survival = survival_probability
     ),
     brier_curve = tibble(
-      pathway = pathway,
+      n_pathways = length(selected_genes),
       scoring = scoring,
       model = model,
       time = evaluation_times,
@@ -371,28 +380,59 @@ evaluate_model <- function(pathway,
 }
 
 
-# 7. Run the four comparisons for each of the ten pathways ----
+# 7. Combine the ten score columns and fit FOUR models ----
+
+# Calculate scores for each pathway before fitting any survival model.
+pathway_scores <- selected_genes |>
+  imap(function(genes, pathway) {
+    scores <- calculate_pathway_scores(genes)
+    message("Scores completed: ", pathway)
+    scores
+  })
+
+# Each resulting table has patient_id + TEN pathway-score columns.
+combine_pathway_scores <- function(scoring,
+                                   group) {
+
+  pathway_scores |>
+    imap(function(scores, pathway) {
+      scores[[scoring]][[group]] |>
+        rename_with(
+          ~ pathway,
+          -patient_id
+        )
+    }) |>
+    reduce(
+      left_join,
+      by = "patient_id"
+    )
+}
+
+combined_scores <- list(
+  PCA = list(
+    training = combine_pathway_scores("PCA", "training"),
+    test = combine_pathway_scores("PCA", "test")
+  ),
+  GSVA = list(
+    training = combine_pathway_scores("GSVA", "training"),
+    test = combine_pathway_scores("GSVA", "test")
+  )
+)
+
+stopifnot(
+  ncol(combined_scores$PCA$training) == 11,
+  ncol(combined_scores$GSVA$training) == 11
+)
 
 combinations <- crossing(
   scoring = c("PCA", "GSVA"),
   model = c("cox", "aft")
 )
 
-analysis_runs <- selected_genes |>
-  imap(function(genes, pathway) {
-
-    scores <- calculate_pathway_scores(genes)
-
-    comparisons <- combinations |>
-      pmap(function(scoring, model) {
-        evaluate_model(pathway, scoring, model, scores)
-      })
-
-    message("Completed: ", pathway)
-
-    comparisons
-  }) |>
-  list_flatten()
+analysis_runs <- combinations |>
+  pmap(function(scoring, model) {
+    evaluate_model(scoring, model, combined_scores)
+  })
 
 analysis_runs <- analysis_runs |>
   set_names(map_chr(analysis_runs, "key"))
@@ -400,10 +440,10 @@ analysis_runs <- analysis_runs |>
 performance <- analysis_runs |>
   map("metrics") |>
   list_rbind() |>
-  arrange(pathway, scoring, model)
+  arrange(scoring, model)
 
 stopifnot(
-  nrow(performance) == 40,
+  nrow(performance) == 4,
   all(is.finite(performance$uno_cindex)),
   all(between(performance$uno_cindex, 0, 1)),
   all(is.finite(performance$brier_score)),
@@ -413,7 +453,7 @@ stopifnot(
 
 # 8. Save the results and inspect them ----
 
-output_folder <- "data/processed/reactome_professor_analysis"
+output_folder <- "data/processed/reactome_combined_analysis"
 
 dir.create(
   output_folder,
@@ -440,6 +480,8 @@ analysis_runs |>
 
 list(
   runs = analysis_runs,
+  combined_scores = combined_scores,
+  pathway_scores = pathway_scores,
   times = evaluation_times,
   seed = seed
 ) |>
@@ -451,8 +493,9 @@ capture.output(
 )
 
 performance |>
-  print(n = 40, width = Inf)
+  print(n = 4, width = Inf)
 
 # In RStudio you can inspect the full results using:
 # performance |> View()
+# These are four joint ten-pathway models, not separate pathway models.
 # This is a single-split exploratory study, not external validation.
