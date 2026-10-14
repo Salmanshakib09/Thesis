@@ -253,7 +253,7 @@ evaluate_model <- function(scoring,
 
   # Convert linear predictions to survival probabilities for Brier and IBS.
   if (model == "cox") {
-
+    # TODO: look into what is happening here to get survival probabilities from Cox model. Look for references to support this approach. Decide if you want to include it in your paper.
     baseline_hazard <- fitted_model |>
       basehaz(
         centered = TRUE
