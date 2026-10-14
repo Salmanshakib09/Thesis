@@ -12,13 +12,28 @@ brier_score <- function(actual_time,
   )
   
   # Function for obtaining G(t)
-  get_G <- function(t, left = FALSE) {
-    # Event weights need G(t-), before a censoring jump at the same time.
-    indices <- which(if (left) censoring_fit$time < t else censoring_fit$time <= t)
-    if (length(indices) == 0) return(1)
-    tail(censoring_fit$surv[indices], 1)
+  get_G <- function(t,
+                    left = FALSE) {
+
+    # Use G(t-) for an event and G(t) at the evaluation time
+    indices <- which(
+      if (left) {
+        censoring_fit$time < t
+      } else {
+        censoring_fit$time <= t
+      }
+    )
+
+    if (length(indices) == 0) {
+      return(1)
+    }
+
+    tail(
+      censoring_fit$surv[indices],
+      1
+    )
   }
-  
+
   # Calculate each participant's contribution
   contributions <- map_dbl(
     seq_along(actual_time),
