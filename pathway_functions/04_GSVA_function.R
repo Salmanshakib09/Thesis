@@ -9,7 +9,6 @@ pathway_gsva <- function(expression_data, pathway_genes) {
   }
   
   expression_matrix <- expression_data |>
-    filter(gene %in% genes_present) |>
     column_to_rownames("gene") |>
     as.matrix()
   
