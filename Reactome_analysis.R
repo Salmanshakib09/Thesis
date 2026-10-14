@@ -75,15 +75,6 @@ gene_medians <- training_expression |>
     na.rm = TRUE
   )
 
-usable_genes <- names(gene_medians)[is.finite(gene_medians)]
-training_expression <- training_expression[usable_genes, , drop = FALSE]
-test_expression <- test_expression[usable_genes, , drop = FALSE]
-
-for (gene in usable_genes) {
-  training_expression[gene, !is.finite(training_expression[gene, ])] <- gene_medians[gene]
-  test_expression[gene, !is.finite(test_expression[gene, ])] <- gene_medians[gene]
-}
-
 # Remove genes with zero training variance before PCA or GSVA.
 variable_genes <- training_expression |>
   apply(
@@ -96,11 +87,7 @@ training_expression <- training_expression[variable_genes, , drop = FALSE]
 test_expression <- test_expression[variable_genes, , drop = FALSE]
 
 # Your scoring functions expect a gene column and patient columns.
-training_expression_data <- training_expression |>
-  as_tibble(
-    rownames = "gene",
-    .name_repair = "minimal"
-  )
+training_expression_data <-  as_tibble(training_expression,rownames = "gene", .name_repair = "minimal")
 
 test_expression_data <- test_expression |>
   as_tibble(
@@ -120,7 +107,7 @@ pathway_genes <- reactome_pathways$pathways |>
   set_names(reactome_pathways$TERMS) |>
   map(
     intersect,
-    rownames(expression_matrix)
+    variable_genes
   )
 
 eligible_pathways <- tibble(
@@ -131,17 +118,13 @@ eligible_pathways <- tibble(
   arrange(pathway)
 
 # Exploratory selection: it does not use survival associations or test results.
-set.seed(seed)
+set.seed(seed) # TODO: check where set.seed() is used across all scripts and functions.
 
 selected_pathways <- eligible_pathways |>
   slice_sample(n = 10) |>
   arrange(pathway)
 
-selected_genes <- pathway_genes[selected_pathways$pathway] |>
-  map(
-    intersect,
-    variable_genes
-  )
+selected_genes <- pathway_genes[selected_pathways$pathway]
 
 stopifnot(all(lengths(selected_genes) >= 2))
 
