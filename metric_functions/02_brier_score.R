@@ -12,13 +12,11 @@ brier_score <- function(actual_time,
   )
   
   # Function for obtaining G(t)
-  get_G <- function(t) {
-    
-    summary(
-      censoring_fit,
-      times = t,
-      extend = TRUE
-    )$surv
+  get_G <- function(t, left = FALSE) {
+    # Event weights need G(t-), before a censoring jump at the same time.
+    indices <- which(if (left) censoring_fit$time < t else censoring_fit$time <= t)
+    if (length(indices) == 0) return(1)
+    tail(censoring_fit$surv[indices], 1)
   }
   
   # Calculate each participant's contribution
@@ -30,7 +28,7 @@ brier_score <- function(actual_time,
       if (actual_time[i] <= time_point &&
           actual_event[i] == 1) {
         
-        G_i <- get_G(actual_time[i])
+        G_i <- get_G(actual_time[i], left = TRUE)
         
         return(
           predicted_survival[i]^2 / G_i
