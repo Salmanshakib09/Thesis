@@ -7,8 +7,7 @@ clinical_raw <- read_tsv(clinical_url)
 # Transpose the dataset to get partients along rows.
 clinical_t = t(clinical_raw[, -1])
 colnames(clinical_t) = clinical_raw[[1]]
-clinical_t = as_tibble(clinical_t)
-clinical_t$patient_id = rownames(clinical_t)
+clinical_t = as_tibble(clinical_t, rownames = "patient_id")
 
 # Subset onto required variables.
 clinical_processed = clinical_t |>
@@ -27,8 +26,7 @@ expression_raw <- read_tsv(expression_url)
 # Transpose the dataset to get partients along rows.
 expression_t = t(expression_raw[, -1])
 colnames(expression_t) = expression_raw[[1]]
-expression_t = as_tibble(expression_t)
-expression_t$patient_id = rownames(expression_t)
+expression_t = as_tibble(expression_t, rownames = "patient_id")
 
 # Join clinical data with gene expression data.
 luad_processed = inner_join(clinical_clean, expression_t, by = "patient_id")
