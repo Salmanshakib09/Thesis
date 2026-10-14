@@ -1,7 +1,7 @@
 library(tidyverse)
 pathway_pca <- function(expression_data, pathway_genes) {
   genes_present<- pathway_genes |>
-    intersect(expressio_data$gene)
+    intersect(expression_data$gene)
   if(length(genes_present)<2) {
     stop("Fewer than two genes present in the pathway")
   }
