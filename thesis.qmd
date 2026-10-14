@@ -291,6 +291,29 @@ A time ratio greater than 1 indicates that survival time is multiplied by a fact
 
 \[TODO: add formulas for all metrics. Including C-index, Brier score, IBS, etc. If some metrics can only be used for certain models, make that clear. E.g. Brier score only for AFT. Include references where appropriate. For Brier score, look at https://link.springer.com/article/10.1186/s13062-018-0213-x#Sec2\]
 
+### Censoring-adjusted Root Mean Squared Error (RMSE)
+
+For survival models using GSVA pathway scores, prediction error in survival time can be evaluated using the inverse probability of censoring weighted RMSE described by [Grimes et al. (2018), Equation (4)](https://doi.org/10.1186/s13062-018-0213-x). GSVA supplies the pathway predictors; the fitted survival model supplies a predicted survival time for each held-out patient.
+
+Let $Y_i=\min(T_i,C_i)$ be the observed follow-up time, $\Delta_i=I(T_i\leq C_i)$ the event indicator, and $\widehat{T}_i$ the predicted survival time. Let $\widehat{G}(t)$ estimate the probability of remaining uncensored beyond time $t$, obtained by fitting a Kaplan--Meier estimator with censoring treated as the event. For $n_{\mathrm{test}}$ held-out patients, the adjusted RMSE is
+
+$$
+\widehat{\mathrm{RMSE}}_{\mathrm{IPCW}}
+=
+\left[
+\frac{1}{n_{\mathrm{test}}}
+\sum_{i=1}^{n_{\mathrm{test}}}
+\frac{\Delta_i\left(Y_i-\widehat{T}_i\right)^2}
+{\widehat{G}(Y_i^-)}
+\right]^{1/2}.
+$$
+
+Here, $\widehat{G}(Y_i^-)$ is the censoring survival probability immediately before the observed event time. Only observed deaths contribute squared errors; their inverse probability weights account for incomplete follow-up. The denominator remains the total number of test patients, rather than the number of observed deaths or the sum of weights. This estimator assumes independent censoring under the chosen censoring model and positive censoring survival probabilities at the event times evaluated.
+
+Lower values indicate more accurate survival-time predictions. RMSE has the same units as survival time: for TCGA-LUAD follow-up recorded in days, the result is expressed in days. Unlike the Brier score, this metric evaluates a predicted time rather than a survival probability. A scalar time prediction must therefore be specified consistently, such as the conditional median survival time. For a Weibull AFT model, this median can be obtained from the fitted survival distribution. A Cox linear predictor alone is a risk score, so a Cox time prediction additionally requires the estimated baseline survival curve; its median may be unavailable if that curve does not reach a survival probability of 0.5.
+
+RMSE evaluates the survival model using GSVA predictors, rather than the GSVA scoring procedure itself. The same metric can also evaluate models using PCA predictors when comparable survival-time predictions are available. Adding this definition to the thesis does not mean RMSE has already been calculated in the current Reactome results.
+
 ### Concordance Index (C-index)
 
 @uno2011 Model discrimination will be evaluated using Uno's concordance index (C-index). The C-index measures the ability of a survival model to correctly rank patients according to their predicted risk. A pair is concordant when the patient with the shorter survival time is assigned a higher predicted risk.
