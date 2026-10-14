@@ -8,32 +8,44 @@ fit_survival_model <- function(survival_data,
   
   model <- match.arg(model)
   
-  # Identify the pathway-score column
-  score_name <- pathway_scores |>
+  # Identify all pathway-score columns
+  score_names <- pathway_scores |>
     select(-patient_id) |>
     names()
-  
-  if (length(score_name) != 1) {
-    stop("pathway_scores must contain patient_id and one pathway-score column.")
+
+  if (length(score_names) < 1) {
+    stop("Provide patient_id and at least one pathway-score column.")
   }
-  
-  # Rename the pathway score to a common name
-  pathway_scores_clean <- pathway_scores |>
-    rename(pathway_score = all_of(score_name))
-  
-  # Join survival data with pathway scores
+
+  if (anyDuplicated(survival_data$patient_id) ||
+      anyDuplicated(pathway_scores$patient_id)) {
+    stop("Patient IDs must be unique.")
+  }
+
+  if (!all(survival_data$patient_id %in% pathway_scores$patient_id)) {
+    stop("Some training patients have no pathway scores.")
+  }
+
+  # Join all score columns to the survival outcomes
   model_data <- survival_data |>
     inner_join(
-      pathway_scores_clean,
+      pathway_scores,
       by = "patient_id"
     )
-  
+
+  # Each pathway gets its own coefficient in the SAME model
+  model_formula <- score_names |>
+    paste0("`", x = _, "`") |>
+    reformulate(
+      response = "Surv(OS_time, OS_event)"
+    )
+
   # Fit Cox PH model
   if (model == "cox") {
     
     fitted_model <- model_data |>
       coxph(
-        formula = Surv(OS_time, OS_event) ~ pathway_score,
+        formula = model_formula,
         data = _
       )
     
@@ -44,7 +56,7 @@ fit_survival_model <- function(survival_data,
     
     fitted_model <- model_data |>
       survreg(
-        formula = Surv(OS_time, OS_event) ~ pathway_score,
+        formula = model_formula,
         data = _,
         dist = "weibull"
       )
@@ -55,10 +67,8 @@ fit_survival_model <- function(survival_data,
   predict_function <- function(new_pathway_scores) {
     
     new_data <- new_pathway_scores |>
-      rename(
-        pathway_score = all_of(score_name)
-      )
-    
+      select(all_of(score_names))
+
     predictions <- fitted_model |>
       predict(
         newdata = new_data,
