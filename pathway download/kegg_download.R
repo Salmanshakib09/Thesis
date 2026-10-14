@@ -13,7 +13,7 @@ kegg_gmt= kegg |>
                     .groups = "drop"
           )|>
           mutate(
-            line=paste(gs_name, gs_description, genes, sep = "/t")
+            line=paste(gs_name, gs_description, genes, sep = "\t")
           )
 dir.create("data/pathways",
            recursive=TRUE,
