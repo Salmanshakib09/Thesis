@@ -95,37 +95,153 @@ Several approaches for defining groups of genes will be considered:
 
 For each pathway collection, gene-expression measurements will be converted into sample-specific pathway scores.
 
-### PathwayPCA Analysis
+### Principal Component Analysis (PCA)
 
-Pathway-level analysis was performed using the `pathwayPCA` R package and the adaptive, elastic-net, sparse principal component analysis (AES-PCA) method. For each pathway, AES-PCA was applied to the expression levels of genes belonging to that pathway to generate pathway-specific principal component (PC) scores. In this analysis, the first principal component (PC1) was used to summarize each pathway. The pathway PC scores are c1onstructed without using the survival outcome.
+Principal component analysis (PCA) summarizes a set of correlated variables using linear combinations that explain the greatest variation in the data [@jolliffe2016]. In this study, PCA is applied separately to the genes in each pathway, and the first principal component (PC1) provides one pathway score per patient. The current implementation uses standard PCA through the R function `prcomp()` with gene centering and scaling. The pathway scores are constructed without using survival outcomes.
 
-For overall survival, each pathway was evaluated separately using a Cox proportional hazards model:
+Let $G^*$ be the genes in pathway $G$ that remain after matching gene identifiers and preprocessing, and let $d_G = |G^*|$. For gene $g \in G^*$, expression is standardized using the training-sample mean and standard deviation:
 
-$$h_i(t) = h_0(t)\exp(\beta PC_{i1}),$$
+$$
+\widetilde{X}_{ig}
+=
+\frac{X_{ig}-\overline{X}_{g}^{\mathrm{tr}}}
+{s_{g}^{\mathrm{tr}}},
+\qquad
+\overline{X}_{g}^{\mathrm{tr}}
+=
+\frac{1}{n_{\mathrm{tr}}}
+\sum_{j\in\mathcal{I}_{\mathrm{tr}}}X_{jg},
+$$
 
-where $PC_{i1}$ is the PC1 score for patient $i$, $h_0(t)$ is the baseline hazard, and $\beta$ represents the association between the pathway score and the hazard of death.
+$$
+s_{g}^{\mathrm{tr}}
+=
+\left[
+\frac{1}{n_{\mathrm{tr}}-1}
+\sum_{j\in\mathcal{I}_{\mathrm{tr}}}
+\left(X_{jg}-\overline{X}_{g}^{\mathrm{tr}}\right)^2
+\right]^{1/2},
+$$
 
-The null hypothesis for each pathway was
+where $\mathcal{I}_{\mathrm{tr}}$ is the set of training patients and $n_{\mathrm{tr}}$ is its size. Genes with zero training variance are excluded because their standardized expression is undefined.
 
-$$H_0: \beta = 0,$$
+Let $\widetilde{\mathbf{X}}_{G}^{\mathrm{tr}}$ be the $n_{\mathrm{tr}}\times d_G$ standardized training expression matrix for pathway $G$. Its sample covariance matrix is
 
-indicating no association between the pathway PC score and overall survival.
+$$
+\widehat{\boldsymbol{\Sigma}}_G
+=
+\frac{1}{n_{\mathrm{tr}}-1}
+\left(\widetilde{\mathbf{X}}_{G}^{\mathrm{tr}}\right)^T
+\widetilde{\mathbf{X}}_{G}^{\mathrm{tr}}.
+$$
 
-Because `numReps = 0` was used in `AESPCA_pVals()`, pathway p-values were calculated parametrically using the score test from the Cox proportional hazards model rather than by permutation. When permutation testing is used (`numReps > 0`), the survival outcome is repeatedly permuted and empirical pathway p-values are calculated from the resulting models.
+The PC1 loading vector is the unit-length vector that maximizes the variance of the projected expression:
 
-Since many pathways were tested simultaneously, p-values were adjusted using the Benjamini-Hochberg (BH) procedure to control the false discovery rate.
+$$
+\widehat{\mathbf{v}}_{G1}
+=
+\underset{\mathbf{v}^T\mathbf{v}=1}{\operatorname{arg\,max}}
+\mathbf{v}^T\widehat{\boldsymbol{\Sigma}}_G\mathbf{v}.
+$$
 
-The PathwayPCA pathway-testing step evaluates the association between individual pathway scores and survival but does not directly evaluate predictive performance. Measures such as the concordance index, time-dependent AUC, prediction error, or test-set performance must therefore be evaluated separately in subsequent predictive modeling analyses.
+Equivalently, it is an eigenvector corresponding to the largest eigenvalue $\widehat{\lambda}_{G1}$ of $\widehat{\boldsymbol{\Sigma}}_G$. The pathway score for patient $i$ is
+
+$$
+Z_{iG}^{(\mathrm{PCA})}
+=
+\widetilde{\mathbf{x}}_{iG}^{T}\widehat{\mathbf{v}}_{G1}
+=
+\sum_{g\in G^*}
+\widetilde{X}_{ig}\widehat{v}_{g,G1}.
+$$
+
+Thus, a patient receives one score for each pathway, regardless of the number of genes in that pathway, and $K_{\mathrm{PCA}}=1$ for the present comparison. The proportion of pathway-expression variance explained by PC1 is
+
+$$
+\mathrm{PVE}_{G1}
+=
+\frac{\widehat{\lambda}_{G1}}
+{\operatorname{tr}(\widehat{\boldsymbol{\Sigma}}_G)}.
+$$
+
+For a test patient, the score is calculated using the training means, standard deviations, and loading vector. PCA is not refitted on the test patients. The sign of a principal component is arbitrary: reversing both its loading vector and scores gives the same component. Consequently, a positive PC1 score does not necessarily indicate biological pathway activation.
 
 ### Gene Set Variation Analysis (GSVA)
 
-@hanzelmann2013
+Gene Set Variation Analysis (GSVA) is an unsupervised method that transforms gene-expression measurements into sample-specific pathway enrichment scores [@hanzelmann2013]. It first assesses each gene's expression relative to its distribution across an analysis cohort and then evaluates whether pathway genes are concentrated toward either end of the transformed gene ranking within a patient. No survival outcomes are used to construct these scores.
 
-Gene Set Variation Analysis (GSVA) is a non-parametric and unsupervised method that transforms a gene-by-sample expression matrix into a pathway-by-sample matrix of enrichment scores. Each patient receives one score for each pathway, representing relative pathway activity across the sample population.
+Let $\mathcal{R}$ be the reference cohort used to estimate gene-expression distributions, with $n_{\mathcal{R}}$ patients. For continuous, log-transformed expression, a Gaussian-kernel estimate of the cumulative distribution function for gene $g$ can be written as
 
-GSVA uses gene-expression distributions, within-sample ranking, and a Kolmogorov--Smirnov-like random walk to calculate pathway enrichment scores. These scores can then be used as predictors in downstream models such as Cox proportional hazards regression for survival analysis.
+$$
+\widehat{F}_g(x)
+=
+\frac{1}{n_{\mathcal{R}}}
+\sum_{j\in\mathcal{R}}
+\Phi\!\left(\frac{x-X_{jg}}{h_g}\right),
+$$
 
-In this study, GSVA will be used as a pathway-level scoring method and compared with PCA-based pathway scores for survival prediction.
+where $\Phi$ is the standard normal cumulative distribution function and $h_g>0$ is a gene-specific smoothing bandwidth. When direct empirical estimation is selected, the corresponding expression is
+
+$$
+\widehat{F}_g(x)
+=
+\frac{1}{n_{\mathcal{R}}}
+\sum_{j\in\mathcal{R}}I(X_{jg}\leq x).
+$$
+
+The implemented function uses the GSVA package's `kcdf = "auto"` setting, which selects the estimation approach according to the data and cohort size. Therefore, a Gaussian kernel is not assumed for every scoring cohort.
+
+For patient $i$, define the transformed expression $q_{ig}=\widehat{F}_g(X_{ig})$. Let $R_{ig}$ be its ascending rank among the $p$ retained background genes, and let $\pi_i(1),\ldots,\pi_i(p)$ order those genes from highest to lowest transformed expression. The rank-based weight used in the dense GSVA calculation is
+
+$$
+w_{ig}
+=
+\left|R_{ig}-\frac{p}{2}\right|^{\tau},
+$$
+
+where $\tau=1$ under the current default settings. Ties are handled by the package's ranking implementation. For pathway $G^*$ with $0<d_G<p$, the enrichment random walk at position $k$ is
+
+$$
+W_{iG}(k)
+=
+\frac{
+\sum_{\ell=1}^{k}
+ w_{i,\pi_i(\ell)}I\!\left(\pi_i(\ell)\in G^*\right)
+}{
+\sum_{\ell=1}^{p}
+ w_{i,\pi_i(\ell)}I\!\left(\pi_i(\ell)\in G^*\right)
+}
+-
+\frac{
+\sum_{\ell=1}^{k}
+ I\!\left(\pi_i(\ell)\notin G^*\right)
+}{p-d_G},
+\qquad k=0,\ldots,p.
+$$
+
+The first term is the cumulative weighted contribution of pathway genes, and the second is the cumulative contribution of genes outside the pathway. The expression matrix must therefore retain background genes rather than being restricted to the selected pathway. The walk is defined when the pathway's total weight is positive.
+
+Define the positive and negative excursions as
+
+$$
+D_{iG}^{+}=\max_{0\leq k\leq p}W_{iG}(k),
+\qquad
+D_{iG}^{-}=-\min_{0\leq k\leq p}W_{iG}(k).
+$$
+
+Under the implemented defaults, `maxDiff = TRUE` and `absRanking = FALSE`, the modified Kuiper enrichment score is
+
+$$
+Z_{iG}^{(\mathrm{GSVA})}
+=
+D_{iG}^{+}-D_{iG}^{-}.
+$$
+
+A positive score indicates enrichment toward the high end of the transformed expression ranking, while a negative score indicates enrichment toward the low end. Opposing excursions can offset one another. This score is a relative enrichment measure, not a survival probability or an absolute measure of biological pathway activity. GSVA produces one score per patient and pathway, so $K_{\mathrm{GSVA}}=1$.
+
+GSVA scores depend on the cohort used to estimate expression distributions and rankings. In the current train/test analysis, training and test cohorts are scored separately so test expression does not influence training scores. This evaluates a held-out batch of patients; it does not establish a fixed scoring transformation for a single future patient.
+
+For either method, scores from the selected pathways are assembled into one predictor vector per patient. With ten pathways, this vector contains ten scores, all of which enter the same Cox or AFT model. Pathway-score centering and scaling for model fitting use training-sample estimates. Predictive performance is assessed using the held-out model predictions, as described in @sec-models and @sec-metrics.
 
 ## Predictive Models {#sec-models}
 
@@ -174,6 +290,29 @@ A time ratio greater than 1 indicates that survival time is multiplied by a fact
 ## Performance Evaluation Metrics {#sec-metrics}
 
 \[TODO: add formulas for all metrics. Including C-index, Brier score, IBS, etc. If some metrics can only be used for certain models, make that clear. E.g. Brier score only for AFT. Include references where appropriate. For Brier score, look at https://link.springer.com/article/10.1186/s13062-018-0213-x#Sec2\]
+
+### Censoring-adjusted Root Mean Squared Error (RMSE)
+
+For survival models using GSVA pathway scores, prediction error in survival time can be evaluated using the inverse probability of censoring weighted RMSE described by [Grimes et al. (2018), Equation (4)](https://doi.org/10.1186/s13062-018-0213-x). GSVA supplies the pathway predictors; the fitted survival model supplies a predicted survival time for each held-out patient.
+
+Let $Y_i=\min(T_i,C_i)$ be the observed follow-up time, $\Delta_i=I(T_i\leq C_i)$ the event indicator, and $\widehat{T}_i$ the predicted survival time. Let $\widehat{G}(t)$ estimate the probability of remaining uncensored beyond time $t$, obtained by fitting a Kaplan--Meier estimator with censoring treated as the event. For $n_{\mathrm{test}}$ held-out patients, the adjusted RMSE is
+
+$$
+\widehat{\mathrm{RMSE}}_{\mathrm{IPCW}}
+=
+\left[
+\frac{1}{n_{\mathrm{test}}}
+\sum_{i=1}^{n_{\mathrm{test}}}
+\frac{\Delta_i\left(Y_i-\widehat{T}_i\right)^2}
+{\widehat{G}(Y_i^-)}
+\right]^{1/2}.
+$$
+
+Here, $\widehat{G}(Y_i^-)$ is the censoring survival probability immediately before the observed event time. Only observed deaths contribute squared errors; their inverse probability weights account for incomplete follow-up. The denominator remains the total number of test patients, rather than the number of observed deaths or the sum of weights. This estimator assumes independent censoring under the chosen censoring model and positive censoring survival probabilities at the event times evaluated.
+
+Lower values indicate more accurate survival-time predictions. RMSE has the same units as survival time: for TCGA-LUAD follow-up recorded in days, the result is expressed in days. Unlike the Brier score, this metric evaluates a predicted time rather than a survival probability. A scalar time prediction must therefore be specified consistently, such as the conditional median survival time. For a Weibull AFT model, this median can be obtained from the fitted survival distribution. A Cox linear predictor alone is a risk score, so a Cox time prediction additionally requires the estimated baseline survival curve; its median may be unavailable if that curve does not reach a survival probability of 0.5.
+
+RMSE evaluates the survival model using GSVA predictors, rather than the GSVA scoring procedure itself. The same metric can also evaluate models using PCA predictors when comparable survival-time predictions are available. Adding this definition to the thesis does not mean RMSE has already been calculated in the current Reactome results.
 
 ### Concordance Index (C-index)
 
