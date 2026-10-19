@@ -75,9 +75,6 @@ gene_medians <- training_expression |>
     na.rm = TRUE
   )
 
-
-}
-
 # Remove genes with zero training variance before PCA or GSVA.
 variable_genes <- training_expression |>
   apply(
@@ -90,11 +87,7 @@ training_expression <- training_expression[variable_genes, , drop = FALSE]
 test_expression <- test_expression[variable_genes, , drop = FALSE]
 
 # Your scoring functions expect a gene column and patient columns.
-training_expression_data <- training_expression |>
-  as_tibble(
-    rownames = "gene",
-    .name_repair = "minimal"
-  )
+training_expression_data <-  as_tibble(training_expression,rownames = "gene", .name_repair = "minimal")
 
 test_expression_data <- test_expression |>
   as_tibble(
@@ -114,7 +107,7 @@ pathway_genes <- reactome_pathways$pathways |>
   set_names(reactome_pathways$TERMS) |>
   map(
     intersect,
-    rownames(expression_matrix)
+    variable_genes
   )
 
 eligible_pathways <- tibble(
@@ -125,17 +118,13 @@ eligible_pathways <- tibble(
   arrange(pathway)
 
 # Exploratory selection: it does not use survival associations or test results.
-set.seed(seed)
+set.seed(seed) # TODO: check where set.seed() is used across all scripts and functions.
 
 selected_pathways <- eligible_pathways |>
   slice_sample(n = 10) |>
   arrange(pathway)
 
-selected_genes <- pathway_genes[selected_pathways$pathway] |>
-  map(
-    intersect,
-    variable_genes
-  )
+selected_genes <- pathway_genes[selected_pathways$pathway]
 
 stopifnot(all(lengths(selected_genes) >= 2))
 
@@ -264,7 +253,7 @@ evaluate_model <- function(scoring,
 
   # Convert linear predictions to survival probabilities for Brier and IBS.
   if (model == "cox") {
-
+    # TODO: look into what is happening here to get survival probabilities from Cox model. Look for references to support this approach. Decide if you want to include it in your paper.
     baseline_hazard <- fitted_model |>
       basehaz(
         centered = TRUE
