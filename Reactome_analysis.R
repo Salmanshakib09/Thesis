@@ -75,13 +75,7 @@ gene_medians <- training_expression |>
     na.rm = TRUE
   )
 
-usable_genes <- names(gene_medians)[is.finite(gene_medians)]
-training_expression <- training_expression[usable_genes, , drop = FALSE]
-test_expression <- test_expression[usable_genes, , drop = FALSE]
 
-for (gene in usable_genes) {
-  training_expression[gene, !is.finite(training_expression[gene, ])] <- gene_medians[gene]
-  test_expression[gene, !is.finite(test_expression[gene, ])] <- gene_medians[gene]
 }
 
 # Remove genes with zero training variance before PCA or GSVA.
