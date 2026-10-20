@@ -1,10 +1,15 @@
-
 # 1. Load packages and your functions ----
 
 library(tidyverse)
 library(survival)
 library(GSVA)
-library(pathwayPCA)
+
+# Analysis settings: separate seeds make the two random choices explicit.
+split_seed <- 20261011L
+pathway_seed <- 20261011L
+n_pathways <- 10L
+gsva_kernel <- "Gaussian"
+output_folder <- "data/processed/reactome_combined_analysis"
 
 "pathway_score_functions/03_pathwayPCA_function.R" |>
   source()
@@ -40,7 +45,9 @@ expression_matrix <- luad_data |>
   t()
 
 stopifnot(
+  !anyNA(survival_data$patient_id),
   !anyDuplicated(survival_data$patient_id),
+  is.numeric(expression_matrix),
   !anyDuplicated(rownames(expression_matrix)),
   identical(colnames(expression_matrix), survival_data$patient_id)
 )
@@ -49,8 +56,7 @@ stopifnot(
 # 3. Split patients into training and test groups ----
 
 # Use the same event-balanced 70/30 split for all four combined models.
-seed <- 20261011L
-set.seed(seed)
+set.seed(split_seed)
 
 training_ids <- survival_data |>
   group_by(OS_event) |>
@@ -67,13 +73,11 @@ test_data <- survival_data |>
 training_expression <- expression_matrix[, training_data$patient_id, drop = FALSE]
 test_expression <- expression_matrix[, test_data$patient_id, drop = FALSE]
 
-# Learn missing-value replacements only from training patients.
-gene_medians <- training_expression |>
-  apply(
-    MARGIN = 1,
-    FUN = median,
-    na.rm = TRUE
-  )
+# Require complete expression rather than silently imputing missing values.
+if (any(!is.finite(training_expression)) ||
+    any(!is.finite(test_expression))) {
+  stop("Expression contains missing or infinite values. Resolve preprocessing first.")
+}
 
 # Remove genes with zero training variance before PCA or GSVA.
 variable_genes <- training_expression |>
@@ -87,7 +91,11 @@ training_expression <- training_expression[variable_genes, , drop = FALSE]
 test_expression <- test_expression[variable_genes, , drop = FALSE]
 
 # Your scoring functions expect a gene column and patient columns.
-training_expression_data <-  as_tibble(training_expression,rownames = "gene", .name_repair = "minimal")
+training_expression_data <- training_expression |>
+  as_tibble(
+    rownames = "gene",
+    .name_repair = "minimal"
+  )
 
 test_expression_data <- test_expression |>
   as_tibble(
@@ -98,10 +106,22 @@ test_expression_data <- test_expression |>
 
 # 4. Read Reactome pathways and select a subset ----
 
-reactome_pathways <- "data/pathways/reactome.gmt" |>
-  read_gmt(
-    description = TRUE
-  )
+# GMT columns are pathway name, description, then gene identifiers.
+gmt_rows <- "data/pathways/reactome.gmt" |>
+  read_lines() |>
+  discard(~ str_trim(.x) == "") |>
+  str_split("\t")
+
+if (length(gmt_rows) == 0 || any(lengths(gmt_rows) < 3)) {
+  stop("The Reactome GMT file must contain a name, description and genes.")
+}
+
+reactome_pathways <- tibble(
+  TERMS = map_chr(gmt_rows, 1),
+  pathways = map(gmt_rows, ~ unique(.x[-c(1, 2)]))
+)
+
+stopifnot(!anyDuplicated(reactome_pathways$TERMS))
 
 pathway_genes <- reactome_pathways$pathways |>
   set_names(reactome_pathways$TERMS) |>
@@ -118,10 +138,14 @@ eligible_pathways <- tibble(
   arrange(pathway)
 
 # Exploratory selection: it does not use survival associations or test results.
-set.seed(seed) # TODO: check where set.seed() is used across all scripts and functions.
+if (nrow(eligible_pathways) < n_pathways) {
+  stop("Too few eligible Reactome pathways for the requested subset.")
+}
+
+set.seed(pathway_seed)
 
 selected_pathways <- eligible_pathways |>
-  slice_sample(n = 10) |>
+  slice_sample(n = n_pathways) |>
   arrange(pathway)
 
 selected_genes <- pathway_genes[selected_pathways$pathway]
@@ -147,53 +171,38 @@ standardize_scores <- function(training_scores,
   list(
     training = training_scores |>
       mutate(across(all_of(score_name), ~ (.x - center) / spread)),
+    center = center,
+    scale = spread,
     test = test_scores |>
       mutate(across(all_of(score_name), ~ (.x - center) / spread))
   )
 }
 
-calculate_pathway_scores <- function(genes) {
+calculate_pathway_scores <- function(genes, pathway) {
 
-  # Call your PCA helper for training scores.
-  pca_training <- training_expression_data |>
+  # Fit PCA once; reuse its exact gene order, centering and loadings.
+  pca_result <- training_expression_data |>
     pathway_pca(
-      pathway_genes = genes
+      pathway_genes = genes,
+      return_fit = TRUE
     )
 
-  # Your helper returns scores, not loadings. Retain a matching training PCA
-  # fit separately so test patients can be projected without fitting test PCA.
-  pca_fit <- training_expression[genes, , drop = FALSE] |>
-    t() |>
-    prcomp(
-      center = TRUE,
-      scale. = TRUE
-    )
-
-  stopifnot(isTRUE(all.equal(
-    unname(pca_fit$x[, 1]),
-    pca_training$PC1,
-    tolerance = 1e-10
-  )))
+  pca_training <- pca_result$scores
+  pca_fit <- pca_result$fit
 
   pca_test <- pca_fit |>
     predict(
-      newdata = t(test_expression[genes, , drop = FALSE])
+      newdata = t(test_expression[rownames(pca_fit$rotation), , drop = FALSE])
     ) |>
     as.data.frame() |>
     rownames_to_column("patient_id") |>
     select(patient_id, PC1)
 
-  # Call your GSVA helper separately for each cohort.
-  # GSVA is cohort-dependent; this evaluates a held-out batch of patients.
-  gsva_training <- training_expression_data |>
-    pathway_gsva(
-      pathway_genes = genes
-    )
+  gsva_training <- gsva_training_scores |>
+    select(patient_id, GSVA = all_of(pathway))
 
-  gsva_test <- test_expression_data |>
-    pathway_gsva(
-      pathway_genes = genes
-    )
+  gsva_test <- gsva_test_scores |>
+    select(patient_id, GSVA = all_of(pathway))
 
   list(
     PCA = standardize_scores(pca_training, pca_test, "PC1"),
@@ -243,17 +252,14 @@ evaluate_model <- function(scoring,
     prediction_function() |>
     as.numeric()
 
-  # The returned function's environment contains its fitted survival model.
   fitted_model <- prediction_function |>
-    environment() |>
-    get(
-      x = "fitted_model",
-      envir = _
-    )
+    attr("model")
 
   # Convert linear predictions to survival probabilities for Brier and IBS.
   if (model == "cox") {
-    # TODO: look into what is happening here to get survival probabilities from Cox model. Look for references to support this approach. Decide if you want to include it in your paper.
+    # S(t | x) = exp(-H_ref(t) * exp(lp_centered)).
+    # basehaz(centered = TRUE) and predict.coxph(reference = "sample")
+    # use the same fitted-model reference. See help("basehaz", package = "survival").
     baseline_hazard <- fitted_model |>
       basehaz(
         centered = TRUE
@@ -293,13 +299,15 @@ evaluate_model <- function(scoring,
     all(apply(survival_probability, 1, diff) <= 1e-10)
   )
 
-  # Call your metric functions as written. They estimate censoring on the
-  # evaluated test patients. Survival times retain their source units.
+  # Uno weights use training censoring; Brier/IBS use test-cohort censoring.
+  # Survival times retain their source units (days in this LUAD dataset).
   c_index <- test_data$OS_time |>
     uno_cindex(
       actual_event = test_data$OS_event,
       predicted_risk = predicted_risk,
-      tau = evaluation_horizon
+      tau = evaluation_horizon,
+      training_time = training_data$OS_time,
+      training_event = training_data$OS_event
     )
 
   brier_scores <- evaluation_times |>
@@ -329,6 +337,7 @@ evaluate_model <- function(scoring,
       train_n = nrow(training_data),
       test_n = nrow(test_data),
       test_events = sum(test_data$OS_event),
+      start_time = first(evaluation_times),
       horizon = evaluation_horizon,
       uno_cindex = c_index,
       brier_score = last(brier_scores),
@@ -353,10 +362,18 @@ evaluate_model <- function(scoring,
 
 # 7. Combine the ten score columns and fit FOUR models ----
 
+# Estimate GSVA ranks once per cohort, using all retained background genes.
+# Gaussian kernels are shared across cohorts; scores remain cohort-dependent.
+gsva_training_scores <- training_expression_data |>
+  pathway_gsva(selected_genes, kcdf = gsva_kernel)
+
+gsva_test_scores <- test_expression_data |>
+  pathway_gsva(selected_genes, kcdf = gsva_kernel)
+
 # Calculate scores for each pathway before fitting any survival model.
 pathway_scores <- selected_genes |>
   imap(function(genes, pathway) {
-    scores <- calculate_pathway_scores(genes)
+    scores <- calculate_pathway_scores(genes, pathway)
     message("Scores completed: ", pathway)
     scores
   })
@@ -391,8 +408,8 @@ combined_scores <- list(
 )
 
 stopifnot(
-  ncol(combined_scores$PCA$training) == 11,
-  ncol(combined_scores$GSVA$training) == 11
+  ncol(combined_scores$PCA$training) == n_pathways + 1,
+  ncol(combined_scores$GSVA$training) == n_pathways + 1
 )
 
 combinations <- crossing(
@@ -424,8 +441,6 @@ stopifnot(
 
 # 8. Save the results and inspect them ----
 
-output_folder <- "data/processed/reactome_combined_analysis"
-
 dir.create(
   output_folder,
   recursive = TRUE,
@@ -454,7 +469,13 @@ list(
   combined_scores = combined_scores,
   pathway_scores = pathway_scores,
   times = evaluation_times,
-  seed = seed
+  settings = list(
+    split_seed = split_seed,
+    pathway_seed = pathway_seed,
+    gsva_kernel = gsva_kernel,
+    n_pathways = n_pathways
+  ),
+  training_genes = variable_genes
 ) |>
   saveRDS(file.path(output_folder, "analysis.rds"))
 

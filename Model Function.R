@@ -33,6 +33,15 @@ fit_survival_model <- function(survival_data,
       by = "patient_id"
     )
 
+  if (any(!is.finite(model_data$OS_time)) ||
+      any(model_data$OS_time <= 0) ||
+      anyNA(model_data$OS_event) ||
+      any(!model_data$OS_event %in% c(0, 1)) ||
+      any(!vapply(model_data[score_names], is.numeric, logical(1))) ||
+      any(!is.finite(as.matrix(model_data[score_names])))) {
+    stop("Provide valid survival outcomes and finite numeric pathway scores.")
+  }
+
   # Each pathway gets its own coefficient in the SAME model
   model_formula <- score_names |>
     paste0("`", x = _, "`") |>
@@ -78,5 +87,8 @@ fit_survival_model <- function(survival_data,
     return(predictions)
   }
   
+  # Expose the fit without requiring callers to inspect the closure.
+  attr(predict_function, "model") <- fitted_model
+
   return(predict_function)
 }
