@@ -4,7 +4,9 @@ library(survAUC)
 uno_cindex <- function(actual_time,
                        actual_event,
                        predicted_risk,
-                       tau) {
+                       tau,
+                       training_time = actual_time,
+                       training_event = actual_event) {
   
   # Create the survival outcome
   actual_survival <- Surv(
@@ -14,7 +16,7 @@ uno_cindex <- function(actual_time,
   
   # Calculate Uno's C-index
   cindex <- UnoC(
-    Surv.rsp = actual_survival,
+    Surv.rsp = Surv(training_time, training_event),
     Surv.rsp.new = actual_survival,
     lpnew = predicted_risk,
     time = tau
