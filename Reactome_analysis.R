@@ -155,61 +155,7 @@ stopifnot(all(lengths(selected_genes) >= 2))
 
 # 5. Calculate PCA and GSVA scores ----
 
-# Standardize a score using its TRAINING mean and standard deviation.
-standardize_scores <- function(training_scores,
-                               test_scores,
-                               score_name) {
-
-  center <- training_scores[[score_name]] |>
-    mean()
-
-  spread <- training_scores[[score_name]] |>
-    sd()
-
-  stopifnot(is.finite(spread), spread > 0)
-
-  list(
-    training = training_scores |>
-      mutate(across(all_of(score_name), ~ (.x - center) / spread)),
-    center = center,
-    scale = spread,
-    test = test_scores |>
-      mutate(across(all_of(score_name), ~ (.x - center) / spread))
-  )
-}
-
-calculate_pathway_scores <- function(genes, pathway) {
-
-  # Fit PCA once; reuse its exact gene order, centering and loadings.
-  pca_result <- training_expression_data |>
-    pathway_pca(
-      pathway_genes = genes,
-      return_fit = TRUE
-    )
-
-  pca_training <- pca_result$scores
-  pca_fit <- pca_result$fit
-
-  pca_test <- pca_fit |>
-    predict(
-      newdata = t(test_expression[rownames(pca_fit$rotation), , drop = FALSE])
-    ) |>
-    as.data.frame() |>
-    rownames_to_column("patient_id") |>
-    select(patient_id, PC1)
-
-  gsva_training <- gsva_training_scores |>
-    select(patient_id, GSVA = all_of(pathway))
-
-  gsva_test <- gsva_test_scores |>
-    select(patient_id, GSVA = all_of(pathway))
-
-  list(
-    PCA = standardize_scores(pca_training, pca_test, "PC1"),
-    GSVA = standardize_scores(gsva_training, gsva_test, "GSVA"),
-    pca_fit = pca_fit
-  )
-}
+# Training/test preparation is defined in the PCA and GSVA helper files.
 
 
 # 6. Fit Cox/AFT and calculate all performance metrics ----
@@ -362,20 +308,29 @@ evaluate_model <- function(scoring,
 
 # 7. Combine the ten score columns and fit FOUR models ----
 
-# Estimate GSVA ranks once per cohort, using all retained background genes.
-# Gaussian kernels are shared across cohorts; scores remain cohort-dependent.
-gsva_training_scores <- training_expression_data |>
-  pathway_gsva(selected_genes, kcdf = gsva_kernel)
+# Calculate GSVA for all pathways together, preserving the background genes.
+gsva_scores <- prepare_gsva_scores(
+  training_expression_data,
+  test_expression_data,
+  selected_genes,
+  kcdf = gsva_kernel
+)
 
-gsva_test_scores <- test_expression_data |>
-  pathway_gsva(selected_genes, kcdf = gsva_kernel)
-
-# Calculate scores for each pathway before fitting any survival model.
+# Each helper returns scores standardized with training estimates.
 pathway_scores <- selected_genes |>
   imap(function(genes, pathway) {
-    scores <- calculate_pathway_scores(genes, pathway)
+    pca_scores <- prepare_pca_scores(
+      training_expression_data,
+      test_expression_data,
+      genes
+    )
+
     message("Scores completed: ", pathway)
-    scores
+    list(
+      PCA = pca_scores$PCA,
+      GSVA = gsva_scores[[pathway]],
+      pca_fit = pca_scores$pca_fit
+    )
   })
 
 # Each resulting table has patient_id + TEN pathway-score columns.
