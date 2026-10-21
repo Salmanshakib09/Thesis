@@ -50,3 +50,52 @@ pathway_gsva <- function(expression_data,
 
   return(pathway_scores)
 }
+
+
+# Score all pathways once per cohort, then scale with training estimates.
+# GSVA distributions are still estimated separately in each cohort.
+prepare_gsva_scores <- function(training_expression_data,
+                                test_expression_data,
+                                pathway_genes,
+                                kcdf = "auto") {
+
+  training_scores <- training_expression_data |>
+    pathway_gsva(pathway_genes, kcdf = kcdf)
+
+  test_scores <- test_expression_data |>
+    pathway_gsva(pathway_genes, kcdf = kcdf)
+
+  standardize_scores <- function(training_scores,
+                                 test_scores,
+                                 score_name) {
+
+    center <- training_scores[[score_name]] |>
+      mean()
+
+    spread <- training_scores[[score_name]] |>
+      sd()
+
+    stopifnot(is.finite(spread), spread > 0)
+
+    list(
+      training = training_scores |>
+        mutate(across(all_of(score_name), ~ (.x - center) / spread)),
+      center = center,
+      scale = spread,
+      test = test_scores |>
+        mutate(across(all_of(score_name), ~ (.x - center) / spread))
+    )
+  }
+
+  names(training_scores)[-1] |>
+    set_names() |>
+    map(function(pathway) {
+      training <- training_scores |>
+        select(patient_id, GSVA = all_of(pathway))
+
+      test <- test_scores |>
+        select(patient_id, GSVA = all_of(pathway))
+
+      standardize_scores(training, test, "GSVA")
+    })
+}
