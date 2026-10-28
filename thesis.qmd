@@ -57,7 +57,7 @@ Consider a gene expression dataset collected from $n$ subjects, where expression
 
 $$\mathbf{X} \in \mathbb{R}^{n \times p}$$
 
-denote the observed gene expression matrix, where $X_{ij}$ is the expression value of gene $j$ for subject $i$. For each subject $i \in \{1,\ldots,n\}$, let $T_i$ denote the observed overall survival or follow-up time and let $\delta_i \in \{0,1\}$ denote the event indicator, where $\delta_i = 1$ indicates an observed death and $\delta_i = 0$ indicates a censored observation. The survival outcome for subject $i$ is therefore represented by $Y_i = (T_i,\delta_i)$.
+denote the observed gene expression matrix, where $X_{ij}$ is the expression value of gene $j$ for subject $i$. For each subject $i \in \{1,\ldots,n\}$, let $T_i$ denote the true overall survival time and $C_i$ the censoring time. The observed follow-up time is $U_i = \min(T_i,C_i)$, and the event indicator is $\delta_i = I(T_i \leq C_i)$, where $\delta_i = 1$ indicates an observed death and $\delta_i = 0$ indicates a censored observation. The observed survival outcome is therefore represented by $Y_i = (U_i,\delta_i)$. Let $\mathbf{C}_i$ denote a vector of clinical covariates, such as age, sex, and disease stage; this vector is distinct from the censoring time $C_i$.
 
 Let $\mathcal{G} \subseteq \mathcal{P}(\{1,\ldots,p\})$ denote a collection of pathways, where $\mathcal{P}$ denotes the power set. For a pathway $G \in \mathcal{G}$, the elements of $G$ index the genes belonging to that pathway, and
 
@@ -65,7 +65,7 @@ $$\mathbf{X}(G) \in \mathbb{R}^{n \times |G|}$$
 
 denotes the gene expression matrix restricted to the genes contained in $G$. Different pathway collections, such as KEGG, Reactome, and Gene Ontology, may define different sets of pathways and different gene memberships within those pathways.
 
-For each pathway $G \in \mathcal{G}$, a pathway-level scoring method is used to summarize $\mathbf{X}(G)$ into one or more subject-specific pathway features. Let
+For each pathway $G \in \mathcal{G}$, a pathway-level representation summarizes expression into one or more subject-specific features. Some scoring methods additionally use genes outside the pathway as a reference background. Let
 
 $$\mathbf{Z}_{iG}^{(s)}
 =
@@ -76,7 +76,7 @@ Z_{iGK_s}^{(s)}
 \right)^T
 \in \mathbb{R}^{K_s}$$
 
-denote the pathway-level representation for subject $i$ and pathway $G$ obtained using scoring method $s$, where $K_s$ denotes the number of features produced by method $s$.
+denote the pathway-level representation for subject $i$ and pathway $G$ obtained using representation $s$, where $K_s$ denotes the number of score components in that representation.
 
 For PCA, $\mathbf{Z}_{iG}^{(\mathrm{PCA})}$ may contain one or more principal component scores retained for pathway $G$. For GSVA, a single enrichment score is obtained for each subject and pathway, so $K_{\mathrm{GSVA}} = 1$.
 
@@ -241,37 +241,29 @@ A positive score indicates enrichment toward the high end of the transformed exp
 
 GSVA scores depend on the cohort used to estimate expression distributions and rankings. In the current train/test analysis, training and test cohorts are scored separately so test expression does not influence training scores. This evaluates a held-out batch of patients; it does not establish a fixed scoring transformation for a single future patient.
 
-For either method, scores from the selected pathways are assembled into one predictor vector per patient. With ten pathways, this vector contains ten scores, all of which enter the same Cox or AFT model. Pathway-score centering and scaling for model fitting use training-sample estimates. Predictive performance is assessed using the held-out model predictions, as described in @sec-models and @sec-metrics.
+The resulting scalar or vector pathway representations will be used in direct and two-stage modeling approaches. Pathway-score centering and scaling will use estimates from the appropriate training folds. Predictive performance will be assessed using held-out predictions, as described in @sec-models and @sec-metrics.
 
 ### Scalar and Vector Pathway Representations
 
-For patient $i$ and pathway $j$, gene expression will be summarized by a pathway-level score vector,
+Using the notation introduced above, scalar representations have $K_s=1$, whereas vector representations have $K_s>1$.
+
+Scalar representations will include the first principal component (PC1), GSVA, and single-sample gene set enrichment analysis (ssGSEA), considered separately. Each produces one score per patient for each pathway.
+
+Vector representations will include multiple principal components, such as $(PC1, PC2, PC3)$, and combinations of scoring methods, such as $(PC1, GSVA, ssGSEA)$.
+
+Additional candidate representations will summarize expression across genes within each pathway for each patient. These may include the mean ($\bar{x}_{iG}$), standard deviation ($s_{iG}$), and the difference between the mean and median, giving
 
 $$
-\mathbf{S}_{ij}
-=
-(S_{ij1}, \ldots, S_{ijK}),
-$$
-
-where $K$ is the number of score components used to represent the pathway.
-
-Scalar representations ($K = 1$) will include the first principal component (PC1), GSVA, and single-sample gene set enrichment analysis (ssGSEA). Each method produces one score per patient for each pathway.
-
-Vector representations ($K > 1$) will include multiple principal components, such as $(PC1, PC2, PC3)$, and combinations of scoring methods, such as $(PC1, GSVA, ssGSEA)$.
-
-Additional candidate representations will summarize expression across genes within each pathway for each patient. These may include the mean ($\bar{x}_{ij}$), standard deviation ($s_{ij}$), and the difference between the mean and median, giving
-
-$$
-\mathbf{S}_{ij}
+\mathbf{Z}_{iG}^{(\mathrm{summary})}
 =
 \left(
-\bar{x}_{ij},
-s_{ij},
-\bar{x}_{ij} - \operatorname{median}_{g \in G_j}(X_{ig})
-\right),
+\bar{x}_{iG},
+s_{iG},
+\bar{x}_{iG} - \operatorname{median}_{g \in G}(X_{ig})
+\right)^T.
 $$
 
-where $G_j$ is the gene set for pathway $j$ and $X_{ig}$ denotes the expression of gene $g$ in patient $i$. The expression scale and any gene standardization will be specified before calculating these summaries.
+Here, the mean, standard deviation, and median are calculated across genes in pathway $G$ within patient $i$, and $X_{ig}$ denotes the expression of gene $g$ in patient $i$. The expression scale and any gene standardization will be specified before calculating these summaries.
 
 These representations will be compared to assess whether retaining multiple features per pathway improves survival prediction relative to using a single pathway score.
 
@@ -309,7 +301,7 @@ $$\log(T_i)
 +
 \sigma\epsilon_i,$$
 
-where $T_i$ represents the survival time of patient $i$, $\mathbf{x}_i$ represents the pathway-level predictors, $\boldsymbol{\beta}$ contains the regression coefficients, $\sigma$ is a scale parameter, and $\epsilon_i$ represents the model error term whose distribution depends on the chosen AFT model.
+where $T_i$ represents the true, potentially unobserved survival time of patient $i$, $\mathbf{x}_i$ represents the pathway-level predictors, $\boldsymbol{\beta}$ contains the regression coefficients, $\sigma$ is a scale parameter, and $\epsilon_i$ represents the model error term whose distribution depends on the chosen AFT model.
 
 Exponentiating a regression coefficient gives the time ratio,
 
@@ -323,7 +315,7 @@ A time ratio greater than 1 indicates that survival time is multiplied by a fact
 
 For survival models using GSVA pathway scores, prediction error in survival time can be evaluated using the inverse probability of censoring weighted RMSE described by [Grimes et al. (2018), Equation (4)](https://doi.org/10.1186/s13062-018-0213-x). GSVA supplies the pathway predictors; the fitted survival model supplies a predicted survival time for each held-out patient.
 
-Let $Y_i=\min(T_i,C_i)$ be the observed follow-up time, $\Delta_i=I(T_i\leq C_i)$ the event indicator, and $\widehat{T}_i$ the predicted survival time. Let $\widehat{G}(t)$ estimate the probability of remaining uncensored beyond time $t$, obtained by fitting a Kaplan--Meier estimator with censoring treated as the event. For $n_{\mathrm{test}}$ held-out patients, the adjusted RMSE is
+Using the observed follow-up time $U_i$ and event indicator $\delta_i$ defined above, let $\widehat{T}_i$ denote the predicted survival time. Let $\widehat{G}(t)$ estimate the probability of remaining uncensored beyond time $t$, obtained by fitting a Kaplan--Meier estimator with censoring treated as the event. For $n_{\mathrm{test}}$ held-out patients, the adjusted RMSE is
 
 $$
 \widehat{\mathrm{RMSE}}_{\mathrm{IPCW}}
@@ -331,12 +323,12 @@ $$
 \left[
 \frac{1}{n_{\mathrm{test}}}
 \sum_{i=1}^{n_{\mathrm{test}}}
-\frac{\Delta_i\left(Y_i-\widehat{T}_i\right)^2}
-{\widehat{G}(Y_i^-)}
+\frac{\delta_i\left(U_i-\widehat{T}_i\right)^2}
+{\widehat{G}(U_i^-)}
 \right]^{1/2}.
 $$
 
-Here, $\widehat{G}(Y_i^-)$ is the censoring survival probability immediately before the observed event time. Only observed deaths contribute squared errors; their inverse probability weights account for incomplete follow-up. The denominator remains the total number of test patients, rather than the number of observed deaths or the sum of weights. This estimator assumes independent censoring under the chosen censoring model and positive censoring survival probabilities at the event times evaluated.
+Here, $\widehat{G}(U_i^-)$ is the censoring survival probability immediately before the observed event time. Only observed deaths contribute squared errors; their inverse probability weights account for incomplete follow-up. The denominator remains the total number of test patients, rather than the number of observed deaths or the sum of weights. This estimator assumes independent censoring under the chosen censoring model and positive censoring survival probabilities at the event times evaluated.
 
 Lower values indicate more accurate survival-time predictions. RMSE has the same units as survival time: for TCGA-LUAD follow-up recorded in days, the result is expressed in days. Unlike the Brier score, this metric evaluates a predicted time rather than a survival probability. A scalar time prediction must therefore be specified consistently, such as the conditional median survival time. For a Weibull AFT model, this median can be obtained from the fitted survival distribution. A Cox linear predictor alone is a risk score, so a Cox time prediction additionally requires the estimated baseline survival curve; its median may be unavailable if that curve does not reach a survival probability of 0.5.
 
@@ -355,17 +347,17 @@ $$
 =
 \frac{
 \sum_{i=1}^{n}\sum_{j=1}^{n}
-\frac{\Delta_i}{\widehat{G}(X_i)^2}
-I(X_i<X_j,\;X_i<\tau)
+\frac{\delta_i}{\widehat{G}(U_i)^2}
+I(U_i<U_j,\;U_i<\tau)
 I(\widehat{\beta}^{T}Z_i>\widehat{\beta}^{T}Z_j)
 }{
 \sum_{i=1}^{n}\sum_{j=1}^{n}
-\frac{\Delta_i}{\widehat{G}(X_i)^2}
-I(X_i<X_j,\;X_i<\tau)
+\frac{\delta_i}{\widehat{G}(U_i)^2}
+I(U_i<U_j,\;U_i<\tau)
 }.
 $$
 
-Here, $X_i$ is the observed survival time for patient $i$, $\Delta_i$ is the event indicator, $\widehat{G}(X_i)$ is the estimated probability of remaining uncensored at time $X_i$, and $\widehat{\beta}^{T}Z_i$ is the predicted risk score. The indicator function $I(\cdot)$ equals 1 when the specified condition is satisfied and 0 otherwise. Higher C-index values indicate better discrimination.
+Here, $U_i$ is the observed survival time for patient $i$, $\delta_i$ is the event indicator, $\widehat{G}(U_i)$ is the estimated probability of remaining uncensored at time $U_i$, and $\widehat{\beta}^{T}Z_i$ is the predicted risk score. The indicator function $I(\cdot)$ equals 1 when the specified condition is satisfied and 0 otherwise. Higher C-index values indicate better discrimination.
 
 The time horizon $\tau$ will be selected to avoid unstable estimation in the tail of the survival distribution, where relatively few patients may remain under observation.
 
@@ -381,11 +373,11 @@ $$
 \frac{1}{n}
 \sum_{i=1}^{n}
 \left[
-\frac{I(X_i \leq t,\Delta_i=1)}
-{\widehat{G}(X_i)}
+\frac{I(U_i \leq t,\delta_i=1)}
+{\widehat{G}(U_i)}
 \left(0-\widehat{S}_i(t)\right)^2
 +
-\frac{I(X_i>t)}
+\frac{I(U_i>t)}
 {\widehat{G}(t)}
 \left(1-\widehat{S}_i(t)\right)^2
 \right].
@@ -394,8 +386,8 @@ $$
 where:
 
 -   $n$ is the total number of patients.
--   $X_i$ is the observed survival or follow-up time for patient $i$.
--   $\Delta_i$ is the event indicator, where $\Delta_i=1$ indicates that the event was observed and $\Delta_i=0$ indicates censoring.
+-   $U_i$ is the observed survival or follow-up time for patient $i$.
+-   $\delta_i$ is the event indicator, where $\delta_i=1$ indicates that the event was observed and $\delta_i=0$ indicates censoring.
 -   $t$ is the time point at which prediction error is evaluated.
 -   $\widehat{S}_i(t)$ is the predicted probability that patient $i$ survives beyond time $t$.
 -   $\widehat{G}(t)$ is the estimated probability of remaining uncensored beyond time $t$.
