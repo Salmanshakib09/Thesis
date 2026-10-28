@@ -243,6 +243,38 @@ GSVA scores depend on the cohort used to estimate expression distributions and r
 
 For either method, scores from the selected pathways are assembled into one predictor vector per patient. With ten pathways, this vector contains ten scores, all of which enter the same Cox or AFT model. Pathway-score centering and scaling for model fitting use training-sample estimates. Predictive performance is assessed using the held-out model predictions, as described in @sec-models and @sec-metrics.
 
+### Scalar and Vector Pathway Representations
+
+For patient $i$ and pathway $j$, gene expression will be summarized by a pathway-level score vector,
+
+$$
+\mathbf{S}_{ij}
+=
+(S_{ij1}, \ldots, S_{ijK}),
+$$
+
+where $K$ is the number of score components used to represent the pathway.
+
+Scalar representations ($K = 1$) will include the first principal component (PC1), GSVA, and single-sample gene set enrichment analysis (ssGSEA). Each method produces one score per patient for each pathway.
+
+Vector representations ($K > 1$) will include multiple principal components, such as $(PC1, PC2, PC3)$, and combinations of scoring methods, such as $(PC1, GSVA, ssGSEA)$.
+
+Additional candidate representations will summarize expression across genes within each pathway for each patient. These may include the mean ($\bar{x}_{ij}$), standard deviation ($s_{ij}$), and the difference between the mean and median, giving
+
+$$
+\mathbf{S}_{ij}
+=
+\left(
+\bar{x}_{ij},
+s_{ij},
+\bar{x}_{ij} - \operatorname{median}_{g \in G_j}(X_{ig})
+\right),
+$$
+
+where $G_j$ is the gene set for pathway $j$ and $X_{ig}$ denotes the expression of gene $g$ in patient $i$. The expression scale and any gene standardization will be specified before calculating these summaries.
+
+These representations will be compared to assess whether retaining multiple features per pathway improves survival prediction relative to using a single pathway score.
+
 ## Predictive Models {#sec-models}
 
 ### Cox Proportional Hazards Model
@@ -285,11 +317,7 @@ $$\exp(\beta_j).$$
 
 A time ratio greater than 1 indicates that survival time is multiplied by a factor greater than 1 as the predictor increases, whereas a time ratio less than 1 indicates shorter survival time.
 
-\[TODO\] A Weibull AFT model will initially be considered. Alternative distributions, such as log-normal and log-logistic, may also be examined when appropriate.
-
 ## Performance Evaluation Metrics {#sec-metrics}
-
-\[TODO: add formulas for all metrics. Including C-index, Brier score, IBS, etc. If some metrics can only be used for certain models, make that clear. E.g. Brier score only for AFT. Include references where appropriate. For Brier score, look at https://link.springer.com/article/10.1186/s13062-018-0213-x#Sec2\]
 
 ### Censoring-adjusted Root Mean Squared Error (RMSE)
 
