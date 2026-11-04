@@ -395,6 +395,18 @@ For example, combinations may include **KEGG + PCA + Cox, PH** **KEGG + GSVA + A
 
 Predictive performance will be assessed using the performance metrics described in @sec-metrics. Performance will be calculated using predictions from the held-out observations so that model evaluation is based on data that were not used for model fitting.
 
+## Results
+
+![Training and held-out test performance of pathway-specific Cox models compared with clinical-only Cox. Red dashed lines indicate clinical-only performance. Training metrics are apparent; test estimates come from one split.](data/processed/reactome_vector_covariates/figures/03_pathway_vs_clinical.png){#fig-pathway-performance width="100%"}
+
+![Adjusted associations between pathway scores and mortality hazard in training patients. Points show hazard ratios and lines show individual 95% confidence intervals.](data/processed/reactome_vector_covariates/figures/01_score_associations.png){#fig-pathway-associations width="100%"}
+
+![Correlations between PC1, GSVA, and ssGSEA scores across training patients.](data/processed/reactome_vector_covariates/figures/02_score_correlations.png){#fig-score-correlations width="100%"}
+
+![Training and held-out test performance of the stacked ridge model compared with clinical-only Cox. Training metrics are apparent, even though ridge uses out-of-fold pathway features.](data/processed/reactome_vector_covariates/figures/04_stacked_vs_clinical.png){#fig-stacked-performance width="100%"}
+
+![Brier-score curves for stacked ridge and clinical-only Cox models, shown separately for training and test patients. Lower values indicate lower prediction error.](data/processed/reactome_vector_covariates/figures/05_brier_curves.png){#fig-brier-curves width="100%"}
+
 ### Penalized Regression
 
 Three penalized regression approaches will be compared:
