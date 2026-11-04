@@ -57,7 +57,7 @@ Consider a gene expression dataset collected from $n$ subjects, where expression
 
 $$\mathbf{X} \in \mathbb{R}^{n \times p}$$
 
-denote the observed gene expression matrix, where $X_{ij}$ is the expression value of gene $j$ for subject $i$. For each subject $i \in \{1,\ldots,n\}$, let $T_i$ denote the true overall survival time and $C_i$ the censoring time. The observed follow-up time is $U_i = \min(T_i,C_i)$, and the event indicator is $\delta_i = I(T_i \leq C_i)$, where $\delta_i = 1$ indicates an observed death and $\delta_i = 0$ indicates a censored observation. The observed survival outcome is therefore represented by $Y_i = (U_i,\delta_i)$. Let $\mathbf{C}_i$ denote a vector of clinical covariates, such as age, sex, and disease stage; this vector is distinct from the censoring time $C_i$.
+denote the observed gene expression matrix, where $X_{ij}$ is the expression value of gene $j$ for subject $i$. For each subject $i \in \{1,\ldots,n\}$, let $T_i$ denote the true overall survival time and $C_i$ the censoring time. The observed follow-up time is $U_i = \min(T_i,C_i)$, and the event indicator is $\delta_i = I(T_i \leq C_i)$, where $\delta_i = 1$ indicates an observed death and $\delta_i = 0$ indicates a censored observation. The observed survival outcome is therefore represented by $Y_i = (U_i,\delta_i)$. Let $\mathbf{W}_i$ denote the vector of clinical covariates for patient $i$, such as age, sex, and disease stage.
 
 Let $\mathcal{G} \subseteq \mathcal{P}(\{1,\ldots,p\})$ denote a collection of pathways, where $\mathcal{P}$ denotes the power set. For a pathway $G \in \mathcal{G}$, the elements of $G$ index the genes belonging to that pathway, and
 
@@ -78,8 +78,6 @@ Z_{iGK_s}^{(s)}
 
 denote the pathway-level representation for subject $i$ and pathway $G$ obtained using representation $s$, where $K_s$ denotes the number of score components in that representation.
 
-For PCA, $\mathbf{Z}_{iG}^{(\mathrm{PCA})}$ may contain one or more principal component scores retained for pathway $G$. For GSVA, a single enrichment score is obtained for each subject and pathway, so $K_{\mathrm{GSVA}} = 1$.
-
 ## Pathway Collections {#sec-pathway-collections}
 
 Several approaches for defining groups of genes will be considered:
@@ -93,153 +91,123 @@ Several approaches for defining groups of genes will be considered:
 
 ## Pathway-Level Scoring {#sec-pathway-scoring}
 
-For each pathway collection, gene-expression measurements will be converted into sample-specific pathway scores.
+For each pathway collection, gene-expression measurements will be summarized into patient-specific pathway scores. We will compare single-score representations, including PC1, GSVA, and ssGSEA, with vector representations containing multiple principal components or combinations of scoring methods. These representations will be used as predictors in the survival models described below.
 
 ### Principal Component Analysis (PCA)
 
-Principal component analysis (PCA) summarizes a set of correlated variables using linear combinations that explain the greatest variation in the data [@jolliffe2016]. In this study, PCA is applied separately to the genes in each pathway, and the first principal component (PC1) provides one pathway score per patient. The current implementation uses standard PCA through the R function `prcomp()` with gene centering and scaling. The pathway scores are constructed without using survival outcomes.
+Principal component analysis (PCA) summarizes correlated variables using linear combinations that explain the greatest variation in the data [@jolliffe2016]. In this study, PCA is applied separately to the genes within each pathway after centering and scaling each gene using its training mean and standard deviation.
 
-Let $G^*$ be the genes in pathway $G$ that remain after matching gene identifiers and preprocessing, and let $d_G = |G^*|$. For gene $g \in G^*$, expression is standardized using the training-sample mean and standard deviation:
+PCA identifies eigenvectors of the training correlation matrix, which provide the gene weights, called loadings. The corresponding eigenvalues quantify the variance explained by each component. For patient $i$, the score for principal component $k$ of pathway $G$ is calculated as
+
+$$
+Z_{iGk}^{(\mathrm{PCA})}
+=
+\sum_{g\in G^\ast}
+\widetilde{X}_{ig}\widehat{v}_{g,Gk},
+$$
+
+where $G^\ast$ denotes the set of retained genes in pathway $G$, $\widetilde{X}_{ig}$ is the standardized expression of gene $g$ in patient $i$, and $\widehat{v}_{g,Gk}$ is the loading of gene $g$ on component $k$ for pathway $G$.
+
+Standardized expression is defined as
 
 $$
 \widetilde{X}_{ig}
 =
-\frac{X_{ig}-\overline{X}_{g}^{\mathrm{tr}}}
-{s_{g}^{\mathrm{tr}}},
-\qquad
-\overline{X}_{g}^{\mathrm{tr}}
-=
-\frac{1}{n_{\mathrm{tr}}}
-\sum_{j\in\mathcal{I}_{\mathrm{tr}}}X_{jg},
+\frac{X_{ig}-\widehat{\mu}_g}{\widehat{\sigma}_g},
 $$
 
-$$
-s_{g}^{\mathrm{tr}}
-=
-\left[
-\frac{1}{n_{\mathrm{tr}}-1}
-\sum_{j\in\mathcal{I}_{\mathrm{tr}}}
-\left(X_{jg}-\overline{X}_{g}^{\mathrm{tr}}\right)^2
-\right]^{1/2},
-$$
+where $X_{ig}$ is the observed gene-expression value, and $\widehat{\mu}_g$ and $\widehat{\sigma}_g$ are the mean and standard deviation of gene $g$ estimated from training patients. The loadings are also estimated from the standardized training expression data. The hat denotes an estimated quantity. Held-out patients are scored using the same training means, standard deviations, and loadings.
 
-where $\mathcal{I}_{\mathrm{tr}}$ is the set of training patients and $n_{\mathrm{tr}}$ is its size. Genes with zero training variance are excluded because their standardized expression is undefined.
+The eigenvector corresponding to the largest eigenvalue provides the loadings for PC1. The ratio of this eigenvalue to the sum of all eigenvalues gives the proportion of variance explained by PC1. Using these loadings, PC1 provides one pathway score per patient. Alternatively, scores from multiple components, such as PC1, PC2, and PC3, can be combined into a pathway-score vector.
 
-Let $\widetilde{\mathbf{X}}_{G}^{\mathrm{tr}}$ be the $n_{\mathrm{tr}}\times d_G$ standardized training expression matrix for pathway $G$. Its sample covariance matrix is
-
-$$
-\widehat{\boldsymbol{\Sigma}}_G
-=
-\frac{1}{n_{\mathrm{tr}}-1}
-\left(\widetilde{\mathbf{X}}_{G}^{\mathrm{tr}}\right)^T
-\widetilde{\mathbf{X}}_{G}^{\mathrm{tr}}.
-$$
-
-The PC1 loading vector is the unit-length vector that maximizes the variance of the projected expression:
-
-$$
-\widehat{\mathbf{v}}_{G1}
-=
-\underset{\mathbf{v}^T\mathbf{v}=1}{\operatorname{arg\,max}}
-\mathbf{v}^T\widehat{\boldsymbol{\Sigma}}_G\mathbf{v}.
-$$
-
-Equivalently, it is an eigenvector corresponding to the largest eigenvalue $\widehat{\lambda}_{G1}$ of $\widehat{\boldsymbol{\Sigma}}_G$. The pathway score for patient $i$ is
-
-$$
-Z_{iG}^{(\mathrm{PCA})}
-=
-\widetilde{\mathbf{x}}_{iG}^{T}\widehat{\mathbf{v}}_{G1}
-=
-\sum_{g\in G^*}
-\widetilde{X}_{ig}\widehat{v}_{g,G1}.
-$$
-
-Thus, a patient receives one score for each pathway, regardless of the number of genes in that pathway, and $K_{\mathrm{PCA}}=1$ for the present comparison. The proportion of pathway-expression variance explained by PC1 is
-
-$$
-\mathrm{PVE}_{G1}
-=
-\frac{\widehat{\lambda}_{G1}}
-{\operatorname{tr}(\widehat{\boldsymbol{\Sigma}}_G)}.
-$$
-
-For a test patient, the score is calculated using the training means, standard deviations, and loading vector. PCA is not refitted on the test patients. The sign of a principal component is arbitrary: reversing both its loading vector and scores gives the same component. Consequently, a positive PC1 score does not necessarily indicate biological pathway activation.
+PCA is implemented using `prcomp()` with `center = TRUE` and `scale. = TRUE`. Held-out patients are scored using the training means, standard deviations, and loadings. Survival outcomes are not used to construct the scores.
 
 ### Gene Set Variation Analysis (GSVA)
 
-Gene Set Variation Analysis (GSVA) is an unsupervised method that transforms gene-expression measurements into sample-specific pathway enrichment scores [@hanzelmann2013]. It first assesses each gene's expression relative to its distribution across an analysis cohort and then evaluates whether pathway genes are concentrated toward either end of the transformed gene ranking within a patient. No survival outcomes are used to construct these scores.
+Gene set variation analysis (GSVA) is an unsupervised method that summarizes gene expression into one enrichment score per patient and pathway. Unlike PCA, GSVA uses a rank-based approach to describe the relative enrichment of pathway genes.
 
-Let $\mathcal{R}$ be the reference cohort used to estimate gene-expression distributions, with $n_{\mathcal{R}}$ patients. For continuous, log-transformed expression, a Gaussian-kernel estimate of the cumulative distribution function for gene $g$ can be written as
+First, each gene's expression is transformed using an estimated cumulative distribution across patients. For continuous expression data, this distribution is estimated using a Gaussian kernel. The transformed values are then ranked within each patient and converted into rank-based weights. For continuous gene-expression data, GSVA estimates each gene's cumulative distribution function using a Gaussian kernel. For gene $g$ in patient $i$, the transformed expression is
 
 $$
-\widehat{F}_g(x)
+U_{ig}
 =
-\frac{1}{n_{\mathcal{R}}}
-\sum_{j\in\mathcal{R}}
-\Phi\!\left(\frac{x-X_{jg}}{h_g}\right),
-$$
-
-where $\Phi$ is the standard normal cumulative distribution function and $h_g>0$ is a gene-specific smoothing bandwidth. When direct empirical estimation is selected, the corresponding expression is
-
-$$
-\widehat{F}_g(x)
+\widehat{F}_g(X_{ig})
 =
-\frac{1}{n_{\mathcal{R}}}
-\sum_{j\in\mathcal{R}}I(X_{jg}\leq x).
+\frac{1}{n}
+\sum_{j=1}^{n}
+\int_{-\infty}^{(X_{ig}-X_{jg})/h_g}
+\frac{1}{\sqrt{2\pi}}
+\exp\left(-\frac{t^2}{2}\right)\,dt,
 $$
 
-The implemented function uses the GSVA package's `kcdf = "auto"` setting, which selects the estimation approach according to the data and cohort size. Therefore, a Gaussian kernel is not assumed for every scoring cohort.
+where $X_{ig}$ is the expression of gene $g$ in patient $i$, $n$ is the number of patients in the batch being scored, and $h_g$ is the gene-specific bandwidth controlling the smoothness of the distribution estimate. For the Gaussian kernel used by GSVA, $h_g=s_g/4$, where $s_g$ is the standard deviation of gene $g$ across these patients.
 
-For patient $i$, define the transformed expression $q_{ig}=\widehat{F}_g(X_{ig})$. Let $R_{ig}$ be its ascending rank among the $p$ retained background genes, and let $\pi_i(1),\ldots,\pi_i(p)$ order those genes from highest to lowest transformed expression. The rank-based weight used in the dense GSVA calculation is
+Equivalently,
 
 $$
-w_{ig}
+U_{ig}
 =
-\left|R_{ig}-\frac{p}{2}\right|^{\tau},
+\frac{1}{n}
+\sum_{j=1}^{n}
+\Phi\left(
+\frac{X_{ig}-X_{jg}}{h_g}
+\right),
 $$
 
-where $\tau=1$ under the current default settings. Ties are handled by the package's ranking implementation. For pathway $G^*$ with $0<d_G<p$, the enrichment random walk at position $k$ is
+where $\Phi(\cdot)$ is the standard normal cumulative distribution function. The value $U_{ig}$ describes the relative position of patient $i$'s expression within the estimated distribution for gene $g$.
+
+For patient $i$ and pathway $G$, let $g_{i1},\ldots,g_{ip}$ denote the ordered genes, where $p$ is the total number of eligible genes. At position $\ell$ in this ordering, define the running difference as
 
 $$
-W_{iG}(k)
+D_{iG}(\ell)
 =
-\frac{
-\sum_{\ell=1}^{k}
- w_{i,\pi_i(\ell)}I\!\left(\pi_i(\ell)\in G^*\right)
-}{
-\sum_{\ell=1}^{p}
- w_{i,\pi_i(\ell)}I\!\left(\pi_i(\ell)\in G^*\right)
-}
+P^{\mathrm{hit}}_{iG}(\ell)
 -
+P^{\mathrm{miss}}_{iG}(\ell),
+$$
+
+where
+
+$$
+P^{\mathrm{hit}}_{iG}(\ell)
+=
 \frac{
-\sum_{\ell=1}^{k}
- I\!\left(\pi_i(\ell)\notin G^*\right)
-}{p-d_G},
-\qquad k=0,\ldots,p.
+\sum_{r=1}^{\ell}
+w_{ir}\,\mathbb{I}(g_{ir}\in G^\ast)
+}{
+\sum_{r=1}^{p}
+w_{ir}\,\mathbb{I}(g_{ir}\in G^\ast)
+},
 $$
 
-The first term is the cumulative weighted contribution of pathway genes, and the second is the cumulative contribution of genes outside the pathway. The expression matrix must therefore retain background genes rather than being restricted to the selected pathway. The walk is defined when the pathway's total weight is positive.
-
-Define the positive and negative excursions as
+and
 
 $$
-D_{iG}^{+}=\max_{0\leq k\leq p}W_{iG}(k),
-\qquad
-D_{iG}^{-}=-\min_{0\leq k\leq p}W_{iG}(k).
+P^{\mathrm{miss}}_{iG}(\ell)
+=
+\frac{
+\sum_{r=1}^{\ell}
+\mathbb{I}(g_{ir}\notin G^\ast)
+}{
+p-|G^\ast|
+}.
 $$
 
-Under the implemented defaults, `maxDiff = TRUE` and `absRanking = FALSE`, the modified Kuiper enrichment score is
+Here, $G^\ast$ denotes the retained genes in pathway $G$, $w_{ir}$ is the nonnegative rank-based weight assigned to gene $g_{ir}$, and $\mathbb{I}(\cdot)$ is the indicator function, equal to one when its condition holds and zero otherwise. Thus, $P^{\mathrm{hit}}_{iG}(\ell)$ is the cumulative normalized weight of pathway genes encountered up to position $\ell$, while $P^{\mathrm{miss}}_{iG}(\ell)$ is the proportion of non-pathway genes encountered up to that position.
+
+Using the difference-based scoring option (`maxDiff = TRUE`, `absRanking = FALSE`), the GSVA score is
 
 $$
 Z_{iG}^{(\mathrm{GSVA})}
 =
-D_{iG}^{+}-D_{iG}^{-}.
+\max_{0\leq\ell\leq p}D_{iG}(\ell)
++
+\min_{0\leq\ell\leq p}D_{iG}(\ell),
 $$
 
-A positive score indicates enrichment toward the high end of the transformed expression ranking, while a negative score indicates enrichment toward the low end. Opposing excursions can offset one another. This score is a relative enrichment measure, not a survival probability or an absolute measure of biological pathway activity. GSVA produces one score per patient and pathway, so $K_{\mathrm{GSVA}}=1$.
+with $D_{iG}(0)=0$. This is the largest positive excursion minus the magnitude of the largest negative excursion. A positive score indicates a larger positive excursion, whereas a negative score indicates a larger negative excursion.
 
-GSVA scores depend on the cohort used to estimate expression distributions and rankings. In the current train/test analysis, training and test cohorts are scored separately so test expression does not influence training scores. This evaluates a held-out batch of patients; it does not establish a fixed scoring transformation for a single future patient.
+GSVA is implemented using the R package `GSVA`. Because the expression-distribution transformation depends on the patients included in the calculation, GSVA scores are cohort-dependent. Training and held-out batches are scored separately, and any subsequent score standardization uses training means and standard deviations.
 
 The resulting scalar or vector pathway representations will be used in direct and two-stage modeling approaches. Pathway-score centering and scaling will use estimates from the appropriate training folds. Predictive performance will be assessed using held-out predictions, as described in @sec-models and @sec-metrics.
 
