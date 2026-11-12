@@ -97,7 +97,7 @@ For each pathway collection, gene-expression measurements will be summarized int
 
 Principal component analysis (PCA) summarizes correlated variables using linear combinations that explain the greatest variation in the data [@jolliffe2016]. In this study, PCA is applied separately to the genes within each pathway after centering and scaling each gene using its training mean and standard deviation.
 
-PCA identifies eigenvectors of the training correlation matrix, which provide the gene weights, called loadings. The corresponding eigenvalues quantify the variance explained by each component. For patient $i$, the score for principal component $k$ of pathway $G$ is calculated as
+PCA identifies eigenvectors of the training covariance matrix, which provide the gene weights, called loadings. The corresponding eigenvalues quantify the variance explained by each component. For patient $i$, the score for principal component $k$ of pathway $G$ is calculated as TODO: notations
 
 $$
 Z_{iGk}^{(\mathrm{PCA})}
@@ -118,7 +118,9 @@ $$
 
 where $X_{ig}$ is the observed gene-expression value, and $\widehat{\mu}_g$ and $\widehat{\sigma}_g$ are the mean and standard deviation of gene $g$ estimated from training patients. The loadings are also estimated from the standardized training expression data. The hat denotes an estimated quantity. Held-out patients are scored using the same training means, standard deviations, and loadings.
 
-The eigenvector corresponding to the largest eigenvalue provides the loadings for PC1. The ratio of this eigenvalue to the sum of all eigenvalues gives the proportion of variance explained by PC1. Using these loadings, PC1 provides one pathway score per patient. Alternatively, scores from multiple components, such as PC1, PC2, and PC3, can be combined into a pathway-score vector.
+(TODO: Connect this to the previous notations )The eigenvector corresponding to the largest eigenvalue provides the loadings for PC1. The ratio of this eigenvalue to the sum of all eigenvalues gives the proportion of variance explained by PC1. Using these loadings, PC1 provides one pathway score per patient. Alternatively, scores from multiple components, such as PC1, PC2, and PC3, can be combined into a pathway-score vector.
+
+TODO:(add extreme cases)
 
 PCA is implemented using `prcomp()` with `center = TRUE` and `scale. = TRUE`. Held-out patients are scored using the training means, standard deviations, and loadings. Survival outcomes are not used to construct the scores.
 
@@ -142,7 +144,7 @@ $$
 
 where $X_{ig}$ is the expression of gene $g$ in patient $i$, $n$ is the number of patients in the batch being scored, and $h_g$ is the gene-specific bandwidth controlling the smoothness of the distribution estimate. For the Gaussian kernel used by GSVA, $h_g=s_g/4$, where $s_g$ is the standard deviation of gene $g$ across these patients.
 
-Equivalently,
+Equivalently, TODO: move or erase
 
 $$
 U_{ig}
@@ -193,9 +195,9 @@ p-|G^\ast|
 }.
 $$
 
-Here, $G^\ast$ denotes the retained genes in pathway $G$, $w_{ir}$ is the nonnegative rank-based weight assigned to gene $g_{ir}$, and $\mathbb{I}(\cdot)$ is the indicator function, equal to one when its condition holds and zero otherwise. Thus, $P^{\mathrm{hit}}_{iG}(\ell)$ is the cumulative normalized weight of pathway genes encountered up to position $\ell$, while $P^{\mathrm{miss}}_{iG}(\ell)$ is the proportion of non-pathway genes encountered up to that position.
+Here, $G^\ast$ denotes the retained genes in pathway $G$, $w_{ir}$ TODO: is the nonnegative rank-based weight assigned to gene $g_{ir}$, and $\mathbb{I}(\cdot)$ is the indicator function, equal to one when its condition holds and zero otherwise. Thus, $P^{\mathrm{hit}}_{iG}(\ell)$ is the cumulative normalized weight of pathway genes encountered up to position $\ell$, while $P^{\mathrm{miss}}_{iG}(\ell)$ is the proportion of non-pathway genes encountered up to that position.
 
-Using the difference-based scoring option (`maxDiff = TRUE`, `absRanking = FALSE`), the GSVA score is
+TODO: move Using the difference-based scoring option (`maxDiff = TRUE`, `absRanking = FALSE`), the GSVA score is
 
 $$
 Z_{iG}^{(\mathrm{GSVA})}
@@ -209,7 +211,7 @@ with $D_{iG}(0)=0$. This is the largest positive excursion minus the magnitude o
 
 GSVA is implemented using the R package `GSVA`. Because the expression-distribution transformation depends on the patients included in the calculation, GSVA scores are cohort-dependent. Training and held-out batches are scored separately, and any subsequent score standardization uses training means and standard deviations.
 
-The resulting scalar or vector pathway representations will be used in direct and two-stage modeling approaches. Pathway-score centering and scaling will use estimates from the appropriate training folds. Predictive performance will be assessed using held-out predictions, as described in @sec-models and @sec-metrics.
+(TODO: add extreme case both PCA and GSVA) The resulting scalar or vector pathway representations will be used in direct and two-stage modeling approaches. Pathway-score centering and scaling will use estimates from the appropriate training folds. Predictive performance will be assessed using held-out predictions, as described in @sec-models and @sec-metrics.
 
 ### Scalar and Vector Pathway Representations
 
