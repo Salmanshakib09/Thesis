@@ -7,7 +7,7 @@ source("metric_functions/01_uno_cindex.R")
 source("metric_functions/02_brier_score.R")
 
 input_folder <- "data/processed/reactome_vector_covariates"
-figure_folder <- file.path(input_folder, "figures")
+figure_folder <- file.path(input_folder, "figures", "readable")
 dir.create(figure_folder, recursive = TRUE, showWarnings = FALSE)
 
 analysis <- readRDS(file.path(input_folder, "analysis.rds"))
@@ -55,11 +55,41 @@ pathway_label <- function(x) {
     str_wrap(width = 36)
 }
 
-save_figure <- function(plot, filename, width = 13, height = 8) {
-  ggsave(file.path(figure_folder, paste0(filename, ".png")),
+# Explanatory notes belong in the QMD captions, not inside the images.
+# Wrap titles and subtitles and use a consistent readable export layout.
+save_figure <- function(plot, filename, width = 13, height = 9) {
+  wrap_note <- function(note) {
+    if (is.null(note)) return(NULL)
+    str_split(note, "\\n")[[1]] |>
+      str_wrap(width = floor(width * 9)) |>
+      paste(collapse = "\n")
+  }
+  plot <- plot +
+    labs(
+      title = str_wrap(plot$labels$title, width = floor(width * 7)),
+      subtitle = wrap_note(plot$labels$subtitle),
+      caption = NULL
+    ) +
+    theme(
+      text = element_text(size = 14),
+      axis.text = element_text(size = 12),
+      strip.text = element_text(size = 12),
+      plot.title = element_text(size = 15, face = "bold"),
+      plot.subtitle = element_text(size = 11, lineheight = 1.15,
+                                   margin = margin(b = 12)),
+      plot.caption = element_text(size = 10, hjust = 0, lineheight = 1.2,
+                                  margin = margin(t = 14)),
+      plot.title.position = "plot",
+      plot.caption.position = "plot",
+      plot.margin = margin(16, 20, 16, 16),
+      panel.spacing = grid::unit(1, "lines"),
+      legend.position = "bottom"
+    )
+  ggsave(file.path(figure_folder, paste0(filename, "_readable.png")),
          plot = plot, width = width, height = height, dpi = 300)
-  ggsave(file.path(figure_folder, paste0(filename, ".pdf")),
+  ggsave(file.path(figure_folder, paste0(filename, "_readable.pdf")),
          plot = plot, width = width, height = height)
+  invisible(plot)
 }
 
 
@@ -107,7 +137,7 @@ forest_plot <- score_coefficients |>
   ) +
   theme_bw()
 
-save_figure(forest_plot, "01_score_associations", height = 9)
+save_figure(forest_plot, "01_score_associations", height = 8)
 score_coefficients |> write_csv(file.path(figure_folder, "score_associations.csv"))
 
 
@@ -132,7 +162,7 @@ correlations <- pathway_models |>
 correlation_plot <- correlations |>
   ggplot(aes(comparison, pathway_name, fill = correlation)) +
   geom_tile(colour = "white") +
-  geom_text(aes(label = sprintf("%.2f", correlation)), size = 3) +
+  geom_text(aes(label = sprintf("%.2f", correlation)), size = 4) +
   scale_fill_gradient2(
     low = "steelblue", mid = "white", high = "firebrick",
     midpoint = 0, limits = c(-1, 1)
@@ -149,7 +179,7 @@ correlation_plot <- correlations |>
   ) +
   theme_minimal()
 
-save_figure(correlation_plot, "02_score_correlations", width = 11, height = 9)
+save_figure(correlation_plot, "02_score_correlations", width = 13, height = 8)
 correlations |> write_csv(file.path(figure_folder, "score_correlations.csv"))
 
 
@@ -230,9 +260,9 @@ performance <- c(clinical_results, pathway_results) |>
   list_rbind()
 
 metric_labels <- c(
-  uno_cindex = "Uno's C-index (higher is better)",
-  brier_score = "Brier score (lower is better)",
-  integrated_brier_score = "IBS (lower is better)"
+  uno_cindex = "Uno's C-index\n(higher is better)",
+  brier_score = "Brier score\n(lower is better)",
+  integrated_brier_score = "IBS\n(lower is better)"
 )
 
 performance_long <- performance |>
@@ -266,7 +296,29 @@ pathway_performance_plot <- performance_long |>
   ) +
   theme_bw()
 
-save_figure(pathway_performance_plot, "03_pathway_vs_clinical", width = 15, height = 11)
+pathway_performance_plot <- save_figure(
+  pathway_performance_plot, "03_pathway_vs_clinical", width = 15, height = 14
+)
+
+
+# Separate report pages avoid shrinking twenty pathway rows onto one page.
+for (sample_name in levels(performance_long$sample)) {
+  page_data <- performance_long |>
+    filter(model != "Clinical-only Cox", sample == sample_name) |>
+    mutate(pathway_name = pathway_label(model))
+  page_reference <- reference_values |> filter(sample == sample_name)
+  report_plot <- ggplot(page_data, aes(value, pathway_name)) +
+    geom_vline(data = page_reference, aes(xintercept = value),
+               linetype = "dashed", colour = "firebrick", inherit.aes = FALSE) +
+    geom_point(size = 2) +
+    facet_wrap(~ metric, scales = "free_x", nrow = 1) +
+    labs(title = paste("Pathway versus clinical-only prediction:", sample_name),
+         subtitle = time_note, x = "Metric value", y = NULL) +
+    theme_bw()
+  suffix <- if (sample_name == "Training (apparent)") "training" else "test"
+  save_figure(report_plot, paste0("03_pathway_vs_clinical_", suffix),
+              width = 13, height = 8)
+}
 
 
 # 4. Optional final-ridge figures, only when the current analysis saved that stage ----
@@ -321,7 +373,7 @@ if (!is.null(ridge_result)) {
     theme_bw() +
     theme(axis.text.x = element_text(angle = 15, hjust = 1))
 
-  save_figure(final_plot, "04_stacked_vs_clinical", width = 15)
+  save_figure(final_plot, "04_stacked_vs_clinical", width = 13, height = 8)
 
   brier_plot <- final_curves |>
     ggplot(aes(time, brier_score, colour = model, linetype = model)) +
@@ -340,7 +392,7 @@ if (!is.null(ridge_result)) {
     ) +
     theme_bw()
 
-  save_figure(brier_plot, "05_brier_curves", width = 13)
+  save_figure(brier_plot, "05_brier_curves", width = 13, height = 8)
   final_performance |> write_csv(file.path(figure_folder, "stacked_vs_clinical_metrics.csv"))
   final_curves |> write_csv(file.path(figure_folder, "stacked_vs_clinical_brier_curves.csv"))
   performance <- bind_rows(performance, final_performance |> filter(model != "Clinical-only Cox"))
