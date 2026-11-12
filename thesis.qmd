@@ -99,38 +99,143 @@ For each pathway collection, gene-expression measurements will be summarized int
 
 ### Principal Component Analysis (PCA)
 
-Principal component analysis (PCA) summarizes correlated variables using linear combinations that explain the greatest variation in the data [@jolliffe2016]. In this study, PCA is applied separately to the genes within each pathway after centering and scaling each gene using its training mean and standard deviation.
+For each pathway $G$, PCA is applied to the standardized training-expression matrix $\widetilde{\mathbf X}_G$, with patients in rows and the $d_G$ retained pathway genes in columns. Each gene is centered and scaled using its training mean and standard deviation:
 
-PCA identifies eigenvectors of the training covariance matrix, which provide the gene weights, called loadings. The corresponding eigenvalues quantify the variance explained by each component. For patient $i$, the score for principal component $k$ of pathway $G$ is calculated as TODO: notations
+$$
+\widetilde X_{ig}
+=
+\frac{X_{ig}-\widehat\mu_g}{\widehat\sigma_g}.
+$$
+
+Here, $X_{ig}$ is the expression of gene $g$ in patient $i$, and $\widehat\mu_g$ and $\widehat\sigma_g$ are the gene's training mean and standard deviation.
+
+The covariance matrix of the standardized expression is
+
+$$
+\mathbf Q_G
+=
+\frac{1}{n_{\mathrm{tr}}-1}
+\widetilde{\mathbf X}_G^{\mathsf T}
+\widetilde{\mathbf X}_G,
+$$
+
+where $n_{\mathrm{tr}}$ is the number of training patients and $\mathsf T$ denotes transpose. Because the genes are standardized, $\mathbf Q_G$ is also the correlation matrix of the original gene-expression variables.
+
+PCA identifies weighted combinations of genes that capture the greatest variation across training patients. The first principal component uses weights that maximize the variance of the resulting scores, subject to the squared weights summing to one. Subsequent components capture the greatest remaining variance while being uncorrelated with earlier components.
+
+The weights are obtained through the eigendecomposition
+
+$$
+\mathbf Q_G
+=
+\mathbf W_G
+\boldsymbol\Lambda_G
+\mathbf W_G^{\mathsf T}.
+$$
+
+Each column of $\mathbf W_G$ is an eigenvector containing the gene weights, or loadings, for one principal component. The corresponding diagonal entry of $\boldsymbol\Lambda_G$ is its eigenvalue, denoted by $\lambda_{Gk}$, and gives the variance captured by component $k$. The eigenvalues are ordered from largest to smallest.
+
+The first column of $\mathbf W_G$ therefore contains the loadings for PC1, corresponding to the largest eigenvalue, $\lambda_{G1}$. The proportion of variance explained by PC1 is
+
+$$
+\mathrm{PVE}_{G1}
+=
+\frac{\lambda_{G1}}
+{\sum_{k=1}^{d_G}\lambda_{Gk}}.
+$$
+
+The score for patient $i$, pathway $G$, and component $k$ is
 
 $$
 Z_{iGk}^{(\mathrm{PCA})}
 =
 \sum_{g\in G^\ast}
-\widetilde{X}_{ig}\widehat{v}_{g,Gk},
+\widetilde X_{ig} W_{G,gk},
 $$
 
-where $G^\ast$ denotes the set of retained genes in pathway $G$, $\widetilde{X}_{ig}$ is the standardized expression of gene $g$ in patient $i$, and $\widehat{v}_{g,Gk}$ is the loading of gene $g$ on component $k$ for pathway $G$.
+where $G^\ast$ is the set of retained pathway genes and $W_{G,gk}$ is the weight for gene $g$ in column $k$ of $\mathbf W_G$. Each score is calculated by multiplying the patient's standardized gene expressions by the corresponding component weights and summing the products.
 
-Standardized expression is defined as
+Retaining the first $K$ components gives the score matrix
 
 $$
-\widetilde{X}_{ig}
+\mathbf Z_G^{(\mathrm{PCA})}
 =
-\frac{X_{ig}-\widehat{\mu}_g}{\widehat{\sigma}_g},
+\widetilde{\mathbf X}_G \mathbf W_{G,K},
 $$
 
-where $X_{ig}$ is the observed gene-expression value, and $\widehat{\mu}_g$ and $\widehat{\sigma}_g$ are the mean and standard deviation of gene $g$ estimated from training patients. The loadings are also estimated from the standardized training expression data. The hat denotes an estimated quantity. Held-out patients are scored using the same training means, standard deviations, and loadings.
+where $\mathbf W_{G,K}$ contains the first $K$ columns of $\mathbf W_G$. The resulting matrix has one row per patient and one column per retained component. Row $i$ contains the patient-specific pathway-score vector
 
-(TODO: Connect this to the previous notations )The eigenvector corresponding to the largest eigenvalue provides the loadings for PC1. The ratio of this eigenvalue to the sum of all eigenvalues gives the proportion of variance explained by PC1. Using these loadings, PC1 provides one pathway score per patient. Alternatively, scores from multiple components, such as PC1, PC2, and PC3, can be combined into a pathway-score vector.
+$$
+\mathbf z_{iG}^{(\mathrm{PCA})}
+=
+\left(
+Z_{iG1}^{(\mathrm{PCA})},
+\ldots,
+Z_{iGK}^{(\mathrm{PCA})}
+\right).
+$$
 
-TODO:(add extreme cases)
+Using $K=1$ gives one PC1 score per patient per pathway. Alternatively, $K=3$ gives a pathway-score vector containing PC1, PC2, and PC3. The current analysis retains PC1 as its PCA score.
 
-PCA is implemented using `prcomp()` with `center = TRUE` and `scale. = TRUE`. Held-out patients are scored using the training means, standard deviations, and loadings. Survival outcomes are not used to construct the scores.
+PCA is implemented using `prcomp()` with `center = TRUE` and `scale. = TRUE`. Held-out patients are scored using the training means, standard deviations, and loading vectors. Survival outcomes are not used to construct the PCA scores.
+
+#### Extreme cases
+
+If all retained pathway genes have identical standardized expression profiles across training patients, they are perfectly positively correlated. PC1 then assigns equal loadings to all genes, up to an overall sign, and captures 100% of the pathway's expression variance. Its eigenvalue is $\lambda_{G1}=d_G$, while all remaining eigenvalues are zero. A single component therefore summarizes the entire pathway expression pattern.
+
+At the opposite extreme, if the standardized pathway genes are mutually uncorrelated, then $\mathbf Q_G=\mathbf I_{d_G}$. All eigenvalues equal one, so each component explains $1/d_G$ of the total variance. There is no unique leading direction, and PC1 alone does not capture a dominant pathway expression pattern.
+
+### Single-Sample Gene Set Enrichment Analysis (ssGSEA)
+
+Single-sample gene set enrichment analysis (ssGSEA) summarizes gene expression into one score for each patient and pathway. Unlike conventional GSEA, which commonly ranks genes by their association with a phenotype, ssGSEA ranks genes by expression within each patient. Survival outcomes are not used to construct the scores.
+
+For patient $i$, let $g_{i1},\ldots,g_{ip}$ denote the eligible genes ordered from highest to lowest expression, where $p$ is the total number of eligible genes. Let $R_{ir}$ denote the expression rank of the gene at position $r$, with larger ranks assigned to higher expression. Define the weight as $w_{ir}=R_{ir}^{\alpha}$, where $\alpha=0.25$.
+
+For pathway $G$, let $G^\ast$ denote its retained genes. At position $\ell$ in the ranked list, the accumulated contributions from genes inside and outside the pathway are
+
+$$
+P^{\mathrm{hit}}_{iG}(\ell)
+=
+\frac{
+\sum_{r=1}^{\ell}
+w_{ir}\,\mathbb{I}(g_{ir}\in G^\ast)
+}{
+\sum_{r=1}^{p}
+w_{ir}\,\mathbb{I}(g_{ir}\in G^\ast)
+},
+$$
+
+and
+
+$$
+P^{\mathrm{miss}}_{iG}(\ell)
+=
+\frac{
+\sum_{r=1}^{\ell}
+\mathbb{I}(g_{ir}\notin G^\ast)
+}{
+p-|G^\ast|
+}.
+$$
+
+Here, $\mathbb{I}(\cdot)$ equals 1 when the stated condition holds and 0 otherwise. The ssGSEA score sums the differences between these accumulated contributions across the ranked list:
+
+$$
+Z_{iG}^{(\mathrm{ssGSEA})}
+=
+\sum_{\ell=1}^{p}
+\left[
+P^{\mathrm{hit}}_{iG}(\ell)
+-
+P^{\mathrm{miss}}_{iG}(\ell)
+\right].
+$$
+
+Higher scores indicate that pathway genes tend to occur toward the high-expression end of the patient's ranked gene list. Unlike GSVA, ssGSEA does not first apply a gene-wise kernel-CDF transformation.
 
 ### Gene Set Variation Analysis (GSVA)
 
-Gene set variation analysis (GSVA) is an unsupervised method that summarizes gene expression into one enrichment score per patient and pathway. Unlike PCA, GSVA uses a rank-based approach to describe the relative enrichment of pathway genes.
+Like ssGSEA, Gene set variation analysis (GSVA) generates a pathway score for each patient using a rank-based enrichment approach. Before ranking genes within each patient, however, GSVA first transforms each gene’s expression using its estimated cumulative distribution across patients.GSVA is an unsupervised method that summarizes gene expression into one enrichment score per patient and pathway. Unlike PCA, GSVA uses a rank-based approach to describe the relative enrichment of pathway genes.
 
 First, each gene's expression is transformed using an estimated cumulative distribution across patients. For continuous expression data, this distribution is estimated using a Gaussian kernel. The transformed values are then ranked within each patient and converted into rank-based weights. For continuous gene-expression data, GSVA estimates each gene's cumulative distribution function using a Gaussian kernel. For gene $g$ in patient $i$, the transformed expression is
 
@@ -147,20 +252,6 @@ U_{ig}
 $$
 
 where $X_{ig}$ is the expression of gene $g$ in patient $i$, $n$ is the number of patients in the batch being scored, and $h_g$ is the gene-specific bandwidth controlling the smoothness of the distribution estimate. For the Gaussian kernel used by GSVA, $h_g=s_g/4$, where $s_g$ is the standard deviation of gene $g$ across these patients.
-
-Equivalently, TODO: move or erase
-
-$$
-U_{ig}
-=
-\frac{1}{n}
-\sum_{j=1}^{n}
-\Phi\left(
-\frac{X_{ig}-X_{jg}}{h_g}
-\right),
-$$
-
-where $\Phi(\cdot)$ is the standard normal cumulative distribution function. The value $U_{ig}$ describes the relative position of patient $i$'s expression within the estimated distribution for gene $g$.
 
 For patient $i$ and pathway $G$, let $g_{i1},\ldots,g_{ip}$ denote the ordered genes, where $p$ is the total number of eligible genes. At position $\ell$ in this ordering, define the running difference as
 
@@ -201,7 +292,7 @@ $$
 
 Here, $G^\ast$ denotes the retained genes in pathway $G$, $w_{ir}$ TODO: is the nonnegative rank-based weight assigned to gene $g_{ir}$, and $\mathbb{I}(\cdot)$ is the indicator function, equal to one when its condition holds and zero otherwise. Thus, $P^{\mathrm{hit}}_{iG}(\ell)$ is the cumulative normalized weight of pathway genes encountered up to position $\ell$, while $P^{\mathrm{miss}}_{iG}(\ell)$ is the proportion of non-pathway genes encountered up to that position.
 
-TODO: move Using the difference-based scoring option (`maxDiff = TRUE`, `absRanking = FALSE`), the GSVA score is
+The GSVA score is
 
 $$
 Z_{iG}^{(\mathrm{GSVA})}
@@ -215,7 +306,13 @@ with $D_{iG}(0)=0$. This is the largest positive excursion minus the magnitude o
 
 GSVA is implemented using the R package `GSVA`. Because the expression-distribution transformation depends on the patients included in the calculation, GSVA scores are cohort-dependent. Training and held-out batches are scored separately, and any subsequent score standardization uses training means and standard deviations.
 
-(TODO: add extreme case both PCA and GSVA) The resulting scalar or vector pathway representations will be used in direct and two-stage modeling approaches. Pathway-score centering and scaling will use estimates from the appropriate training folds. Predictive performance will be assessed using held-out predictions, as described in @sec-models and @sec-metrics.
+The resulting scalar or vector pathway representations will be used in direct and two-stage modeling approaches. Pathway-score centering and scaling will use estimates from the appropriate training folds. Predictive performance will be assessed using held-out predictions, as described in @sec-models and @sec-metrics.
+
+#### Extreme cases
+
+If all retained pathway genes have identical standardized expression profiles across training patients, they are perfectly positively correlated. PC1 then assigns equal loadings to all genes, up to an overall sign, and captures 100% of the pathway's expression variance. Its eigenvalue is $\lambda_{G1}=d_G$, while all remaining eigenvalues are zero. A single component therefore summarizes the entire pathway expression pattern.
+
+At the opposite extreme, if the standardized pathway genes are mutually uncorrelated, then $\mathbf Q_G=\mathbf I_{d_G}$. All eigenvalues equal one, so each component explains $1/d_G$ of the total variance. There is no unique leading direction, and PC1 alone does not capture a dominant pathway expression pattern.
 
 ### Scalar and Vector Pathway Representations
 
