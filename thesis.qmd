@@ -404,75 +404,63 @@ Predictive performance will be assessed using the performance metrics described 
 ## Results
 
 ```{=latex}
-\clearpage
 \begin{landscape}
 ```
 
-![Apparent training performance of ten pathway-specific Cox models versus clinical-only Cox (age, sex, stage). Red dashed lines show the clinical reference; each point represents a model containing PC1, GSVA, ssGSEA and the same clinical covariates. Training n = 323, with 116 deaths; 29 patients were excluded for missing or invalid covariates. Training metrics are not cross-validated. Brier scores are evaluated at 809 days and IBS over 219.2–809 days.](figures/reactome_readable/03_pathway_vs_clinical_training_readable.pdf){#fig-pathway-performance width="9in" fig-pos="H"}
+![Apparent training performance of ten pathway-specific Cox models versus clinical-only Cox (age, sex, stage). Red dashed lines show the clinical reference; each point represents a model containing PC1, GSVA, ssGSEA and the same clinical covariates. Training n = 323, with 116 deaths; 29 patients were excluded for missing or invalid covariates. Training metrics are not cross-validated. Brier scores are evaluated at 809 days and IBS over 219.2–809 days.](figures/reactome_readable/03_pathway_vs_clinical_training_readable.pdf){#fig-pathway-performance width="8in" fig-pos="H"}
 
 ```{=latex}
 \end{landscape}
-\clearpage
 ```
 
 ```{=latex}
-\clearpage
 \begin{landscape}
 ```
 
-![Held-out test performance of the same pathway-specific models and clinical reference, fitted on the same training patients. Test n = 140, with 51 deaths. Red dashed lines show clinical-only performance. Metric directions and evaluation times match the training comparison. These are point estimates from one split without uncertainty intervals.](figures/reactome_readable/03_pathway_vs_clinical_test_readable.pdf){#fig-pathway-performance-test width="9in" fig-pos="H"}
+![Held-out test performance of the same pathway-specific models and clinical reference, fitted on the same training patients. Test n = 140, with 51 deaths. Red dashed lines show clinical-only performance. Metric directions and evaluation times match the training comparison. These are point estimates from one split without uncertainty intervals.](figures/reactome_readable/03_pathway_vs_clinical_test_readable.pdf){#fig-pathway-performance-test width="8in" fig-pos="H"}
 
 ```{=latex}
 \end{landscape}
-\clearpage
 ```
 
 ```{=latex}
-\clearpage
 \begin{landscape}
 ```
 
-![Adjusted associations between pathway scores and mortality hazard in 323 training patients (116 deaths). Points show hazard ratios per training standard deviation and lines show individual 95% confidence intervals; the dashed reference is HR = 1. Each estimate adjusts for the other two scores, age, sex and stage. None of the 30 score tests passes Benjamini–Hochberg adjustment at 5% FDR. PC1 sign is arbitrary; these associations do not establish predictive improvement.](figures/reactome_readable/01_score_associations_readable.pdf){#fig-pathway-associations width="9in" fig-pos="H"}
+![Adjusted associations between pathway scores and mortality hazard in 323 training patients (116 deaths). Points show hazard ratios per training standard deviation and lines show individual 95% confidence intervals; the dashed reference is HR = 1. Each estimate adjusts for the other two scores, age, sex and stage. None of the 30 score tests passes Benjamini–Hochberg adjustment at 5% FDR. PC1 sign is arbitrary; these associations do not establish predictive improvement.](figures/reactome_readable/01_score_associations_readable.pdf){#fig-pathway-associations width="8in" fig-pos="H"}
 
 ```{=latex}
 \end{landscape}
-\clearpage
 ```
 
 ```{=latex}
-\clearpage
 \begin{landscape}
 ```
 
-![Pearson correlations between PC1, GSVA and ssGSEA scores across 323 training patients. Values near either -1 or +1 indicate strong linear dependence; zero indicates no linear correlation. PC1 sign is arbitrary. This comparison uses no survival outcomes and does not measure prediction accuracy.](figures/reactome_readable/02_score_correlations_readable.pdf){#fig-score-correlations width="9in" fig-pos="H"}
+![Pearson correlations between PC1, GSVA and ssGSEA scores across 323 training patients. Values near either -1 or +1 indicate strong linear dependence; zero indicates no linear correlation. PC1 sign is arbitrary. This comparison uses no survival outcomes and does not measure prediction accuracy.](figures/reactome_readable/02_score_correlations_readable.pdf){#fig-score-correlations width="8in" fig-pos="H"}
 
 ```{=latex}
 \end{landscape}
-\clearpage
 ```
 
 ```{=latex}
-\clearpage
 \begin{landscape}
 ```
 
-![Training and held-out test performance of ten-pathway stacked ridge versus clinical-only Cox on identical patients. Clinical covariates also enter each first-stage pathway model. Training metrics are apparent, including ridge metrics calculated on out-of-fold pathway features: they are not out-of-fold evaluation of the entire stack. Brier scores are evaluated at 809 days and IBS over 219.2–809 days. One test split without confidence intervals does not establish improvement over gene-level or random-pathway models.](figures/reactome_readable/04_stacked_vs_clinical_readable.pdf){#fig-stacked-performance width="9in" fig-pos="H"}
+![Training and held-out test performance of ten-pathway stacked ridge versus clinical-only Cox on identical patients. Clinical covariates also enter each first-stage pathway model. Training metrics are apparent, including ridge metrics calculated on out-of-fold pathway features: they are not out-of-fold evaluation of the entire stack. Brier scores are evaluated at 809 days and IBS over 219.2–809 days. One test split without confidence intervals does not establish improvement over gene-level or random-pathway models.](figures/reactome_readable/04_stacked_vs_clinical_readable.pdf){#fig-stacked-performance width="8in" fig-pos="H"}
 
 ```{=latex}
 \end{landscape}
-\clearpage
 ```
 
 ```{=latex}
-\clearpage
 \begin{landscape}
 ```
 
-![Brier-score curves for stacked ridge and the clinical-only Cox reference, evaluated on the same time grid using the same censoring-weight convention. Panels show training and test patients; lower values indicate lower prediction error. Training performance is apparent. Differences on this single split are not significance tests, and GSVA scores remain cohort-dependent.](figures/reactome_readable/05_brier_curves_readable.pdf){#fig-brier-curves width="9in" fig-pos="H"}
+![Brier-score curves for stacked ridge and the clinical-only Cox reference, evaluated on the same time grid using the same censoring-weight convention. Panels show training and test patients; lower values indicate lower prediction error. Training performance is apparent. Differences on this single split are not significance tests, and GSVA scores remain cohort-dependent.](figures/reactome_readable/05_brier_curves_readable.pdf){#fig-brier-curves width="8in" fig-pos="H"}
 
 ```{=latex}
 \end{landscape}
-\clearpage
 ```
 
 ### Penalized Regression
