@@ -52,12 +52,12 @@ pathway_label <- function(x) {
   x |>
     str_remove("^REACTOME_") |>
     str_replace_all("_", " ") |>
-    str_wrap(width = 36)
+    str_wrap(width = 30)
 }
 
 # Explanatory notes belong in the QMD captions, not inside the images.
 # Wrap titles and subtitles and use a consistent readable export layout.
-save_figure <- function(plot, filename, width = 13, height = 9) {
+save_figure <- function(plot, filename, width = 10, height = 8) {
   wrap_note <- function(note) {
     if (is.null(note)) return(NULL)
     str_split(note, "\\n")[[1]] |>
@@ -71,11 +71,11 @@ save_figure <- function(plot, filename, width = 13, height = 9) {
       caption = NULL
     ) +
     theme(
-      text = element_text(size = 14),
-      axis.text = element_text(size = 12),
-      strip.text = element_text(size = 12),
-      plot.title = element_text(size = 15, face = "bold"),
-      plot.subtitle = element_text(size = 11, lineheight = 1.15,
+      text = element_text(size = 16),
+      axis.text = element_text(size = 14),
+      strip.text = element_text(size = 13),
+      plot.title = element_text(size = 17, face = "bold"),
+      plot.subtitle = element_text(size = 13, lineheight = 1.15,
                                    margin = margin(b = 12)),
       plot.caption = element_text(size = 10, hjust = 0, lineheight = 1.2,
                                   margin = margin(t = 14)),
@@ -162,7 +162,7 @@ correlations <- pathway_models |>
 correlation_plot <- correlations |>
   ggplot(aes(comparison, pathway_name, fill = correlation)) +
   geom_tile(colour = "white") +
-  geom_text(aes(label = sprintf("%.2f", correlation)), size = 4) +
+  geom_text(aes(label = sprintf("%.2f", correlation)), size = 4.5) +
   scale_fill_gradient2(
     low = "steelblue", mid = "white", high = "firebrick",
     midpoint = 0, limits = c(-1, 1)
@@ -179,7 +179,7 @@ correlation_plot <- correlations |>
   ) +
   theme_minimal()
 
-save_figure(correlation_plot, "02_score_correlations", width = 13, height = 8)
+save_figure(correlation_plot, "02_score_correlations", width = 10, height = 8)
 correlations |> write_csv(file.path(figure_folder, "score_correlations.csv"))
 
 
@@ -312,12 +312,13 @@ for (sample_name in levels(performance_long$sample)) {
                linetype = "dashed", colour = "firebrick", inherit.aes = FALSE) +
     geom_point(size = 2) +
     facet_wrap(~ metric, scales = "free_x", nrow = 1) +
+    scale_x_continuous(n.breaks = 3, labels = scales::label_number(accuracy = 0.001)) +
     labs(title = paste("Pathway versus clinical-only prediction:", sample_name),
          subtitle = time_note, x = "Metric value", y = NULL) +
     theme_bw()
   suffix <- if (sample_name == "Training (apparent)") "training" else "test"
   save_figure(report_plot, paste0("03_pathway_vs_clinical_", suffix),
-              width = 13, height = 8)
+              width = 10, height = 8)
 }
 
 
@@ -371,9 +372,11 @@ if (!is.null(ridge_result)) {
       )
     ) +
     theme_bw() +
-    theme(axis.text.x = element_text(angle = 15, hjust = 1))
+    theme(axis.text.x = element_text(angle = 0, hjust = 0.5)) +
+    scale_x_discrete(labels = c("Clinical-only Cox" = "Clinical-only\nCox",
+                                "Ten-pathway stacked ridge" = "Stacked\nridge"))
 
-  save_figure(final_plot, "04_stacked_vs_clinical", width = 13, height = 8)
+  save_figure(final_plot, "04_stacked_vs_clinical", width = 10, height = 8)
 
   brier_plot <- final_curves |>
     ggplot(aes(time, brier_score, colour = model, linetype = model)) +
@@ -392,7 +395,7 @@ if (!is.null(ridge_result)) {
     ) +
     theme_bw()
 
-  save_figure(brier_plot, "05_brier_curves", width = 13, height = 8)
+  save_figure(brier_plot, "05_brier_curves", width = 10, height = 8)
   final_performance |> write_csv(file.path(figure_folder, "stacked_vs_clinical_metrics.csv"))
   final_curves |> write_csv(file.path(figure_folder, "stacked_vs_clinical_brier_curves.csv"))
   performance <- bind_rows(performance, final_performance |> filter(model != "Clinical-only Cox"))
