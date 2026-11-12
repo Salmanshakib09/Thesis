@@ -64,3 +64,11 @@ viewing. All other figure names retain their numeric prefix and add `_readable`.
 The script does not edit or render the QMD. Add the desired images and captions
 to the report yourself, then render it. Existing older images are left in place
 so report links are not broken before you update them.
+
+## Report figure copies
+
+The Results section includes selected vector PDFs from `figures/reactome_readable/`.
+These copies are tracked in Git so the report can render without ignored local
+analysis outputs. After regenerating plots, copy the six PDFs referenced by the
+QMD from the `readable/` output directory into this report directory before
+rendering and committing the updated report.
