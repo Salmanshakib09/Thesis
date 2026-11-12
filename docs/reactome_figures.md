@@ -4,7 +4,7 @@ Run the existing analysis first. To generate figures from its saved results,
 run this in RStudio from the project root:
 
 ```r
-"Reactome_covariates_figures.R" |>
+"Reactome_covariates_figures_readable.R" |>
   source()
 ```
 
@@ -12,7 +12,8 @@ This script does not change the existing analysis or rerun expression scoring.
 It fits an additional clinical-only Cox reference using exactly the saved
 training patients and evaluates it on the same training/test patients and time
 grid. Figures and supporting CSV tables are saved in
-`data/processed/reactome_vector_covariates/figures/`, in PNG and PDF formats.
+`data/processed/reactome_vector_covariates/figures/readable/`, in PNG and PDF formats.
+New image filenames end in `_readable` so they are distinct from old exports.
 The individual-pathway performance comparison opens in the Plots pane only when sourced
 interactively. Use Files to open other exported figures.
 
@@ -47,3 +48,19 @@ Never substitute a result from a different pathway collection or patient split.
 - For the broader thesis, add gene-level models, biological-versus-random
   collections, scalar-versus-vector scores, and direct-versus-stacked models
   under shared validation. The current figures describe the ten-pathway pilot.
+
+## Readable figure exports
+
+`Reactome_covariates_figures_readable.R` replaces the old plotting script.
+Embedded footnotes are removed; put explanatory notes in your QMD captions.
+Titles and subtitles wrap, labels use larger text, and legends appear below
+plots. Both PDF and 300-dpi PNG versions are exported.
+
+For the report, use `03_pathway_vs_clinical_training_readable` and
+`03_pathway_vs_clinical_test_readable` to show ten pathways per page. The combined
+comparison is also exported as `03_pathway_vs_clinical_readable` for standalone
+viewing. All other figure names retain their numeric prefix and add `_readable`.
+
+The script does not edit or render the QMD. Add the desired images and captions
+to the report yourself, then render it. Existing older images are left in place
+so report links are not broken before you update them.
