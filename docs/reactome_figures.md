@@ -72,3 +72,11 @@ These copies are tracked in Git so the report can render without ignored local
 analysis outputs. After regenerating plots, copy the six PDFs referenced by the
 QMD from the `readable/` output directory into this report directory before
 rendering and committing the updated report.
+
+## Consistent report alignment
+
+All six report figures use portrait pages and the same text margins. The Results
+heading stays above the first figure. Plots are exported at report proportions
+with larger labels; the training and test comparisons use sparse axis ticks to
+avoid overlap. QMD captions sit directly below each figure. No landscape package
+or rotation is required.
