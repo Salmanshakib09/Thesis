@@ -486,6 +486,10 @@ Thus, the IBS represents the average prediction error over the specified time in
 
 Predictive performance will be evaluated using $k$-fold cross-validation. The data will be divided into $k$ approximately equal-sized folds. In each iteration, $k-1$ folds will be used as the training set and the remaining fold will be used as the test set. This process will be repeated until each fold has served once as the test set.
 
+For the ten-pathway Reactome analysis, $k=5$ folds are stratified by death indicator and cancer stage, using a fixed random seed. The same ten pathway identities from the exploratory pilot are retained without further outcome screening. Within each training partition, gene-variance filtering, PCA loadings, score centering and scaling, and Cox coefficients are refitted. GSVA is calculated separately in each training and held-out batch and remains cohort-dependent. Each pathway model uses PC1, GSVA, ssGSEA, age, sex, and stage; the clinical-only reference uses age, sex, and stage. The prespecified pilot window is retained for comparability: Brier score and Uno's C-index are evaluated at 809 days, and IBS over 219.2–809 days.
+
+Held-out metrics are summarized by their mean across the five folds. Error bars show one approximate fold-based standard error, calculated as the standard deviation of the five metric estimates divided by $\sqrt{5}$. Because training samples overlap between folds, this naive standard error ignores dependence and is a descriptive summary rather than a confidence interval or significance test. Pathway improvements are also calculated relative to the clinical model within each fold before summarizing. The pathway identities and evaluation window were established in the earlier pilot, so this remains an exploratory internal validation rather than an independent confirmatory analysis.
+
 The same cross-validation partitions will be used across all modeling approaches to ensure a fair comparison. Model fitting and any data-dependent estimation will be performed using only the training data within each fold to avoid information leakage. The fitted models will then be used to generate predictions for patients in the corresponding held-out test fold.
 
 Models will be fitted for each combination of pathway collection, pathway-level scoring method, and predictive model described in the previous sections. For each pathway collection, pathway-level scores will first be generated using the scoring methods described in @sec-pathway-scoring. These scores will then be used as predictors in the models described in @sec-models.
@@ -500,17 +504,21 @@ Predictive performance will be assessed using the performance metrics described 
 
 ## Results
 
-![Apparent training performance of ten pathway-specific Cox models versus clinical-only Cox (age, sex, stage). Red dashed lines show the clinical reference; each point represents a model containing PC1, GSVA, ssGSEA and the same clinical covariates. Training n = 323, with 116 deaths; 29 patients were excluded for missing or invalid covariates. Training metrics are not cross-validated. Brier scores are evaluated at 809 days and IBS over 219.2–809 days.](figures/reactome_readable/03_pathway_vs_clinical_training_readable.pdf){#fig-pathway-performance width="100%" fig-align="center" fig-pos="H"}
+![Five-fold held-out performance in 463 complete-case patients (167 deaths) for ten Reactome pathway-specific Cox models and the clinical-only reference (red). Points show equally weighted means across folds; bars show plus or minus one naive fold-based SE, calculated as fold SD divided by $\sqrt{5}$. All models use the same folds. Larger C-index and smaller Brier score or IBS indicate better prediction. The overlapping training samples make these SEs approximate; the bars are not confidence intervals.](figures/reactome_cv/01_cv_performance.pdf){#fig-pathway-performance width="100%" fig-align="center" fig-pos="H"}
 
 ```{=latex}
 \clearpage
 ```
 
-![Held-out test performance of the same pathway-specific models and clinical reference, fitted on the same training patients. Test n = 140, with 51 deaths. Red dashed lines show clinical-only performance. Metric directions and evaluation times match the training comparison. These are point estimates from one split without uncertainty intervals.](figures/reactome_readable/03_pathway_vs_clinical_test_readable.pdf){#fig-pathway-performance-test width="100%" fig-align="center" fig-pos="H"}
+![Paired improvement over clinical-only Cox across the same five test folds. Improvement is pathway minus clinical C-index, or clinical minus pathway Brier score and IBS, so positive values favour pathway models in every panel. Points show mean within-fold improvements and bars show plus or minus one naive fold-based SE. The dashed zero line means no improvement; these bars do not provide a formal significance test.](figures/reactome_cv/02_cv_improvement.pdf){#fig-pathway-performance-test width="100%" fig-align="center" fig-pos="H"}
 
 ```{=latex}
 \clearpage
 ```
+
+### Original single-split exploratory analyses
+
+The remaining association, correlation, stacked-ridge, and Brier-curve figures describe the earlier 323-patient training / 140-patient test split. They have not been re-estimated by the five-fold analysis above. In particular, the stacked model is not included in this cross-validation comparison.
 
 ![Adjusted associations between pathway scores and mortality hazard in 323 training patients (116 deaths). Points show hazard ratios per training standard deviation and lines show individual 95% confidence intervals; the dashed reference is HR = 1. Each estimate adjusts for the other two scores, age, sex and stage. None of the 30 score tests passes Benjamini–Hochberg adjustment at 5% FDR. PC1 sign is arbitrary; these associations do not establish predictive improvement.](figures/reactome_readable/01_score_associations_readable.pdf){#fig-pathway-associations width="100%" fig-align="center" fig-pos="H"}
 
