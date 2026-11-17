@@ -177,9 +177,9 @@ PCA is implemented using `prcomp()` with `center = TRUE` and `scale. = TRUE`. He
 
 #### Extreme cases
 
-If all retained pathway genes have identical standardized expression profiles across training patients, they are perfectly positively correlated. PC1 then assigns equal loadings to all genes, up to an overall sign, and captures 100% of the pathway's expression variance. Its eigenvalue is $\lambda_{G1}=d_G$, while all remaining eigenvalues are zero. A single component therefore summarizes the entire pathway expression pattern.
+If all retained pathway genes are perfectly positively correlated. PC1 then assigns equal loadings to all genes, up to an overall sign, and captures 100% of the pathway's expression variance. Its eigenvalue is $\lambda_{G1}=d_G$, while all remaining eigenvalues are zero with each PC1 loading has magnitude of $1/d_G$. Therefore, a single component therefore summarizes the entire pathway expression pattern.
 
-At the opposite extreme, if the standardized pathway genes are mutually uncorrelated, then $\mathbf Q_G=\mathbf I_{d_G}$. All eigenvalues equal one, so each component explains $1/d_G$ of the total variance. There is no unique leading direction, and PC1 alone does not capture a dominant pathway expression pattern.
+check At the opposite extreme, if the standardized pathway genes are mutually uncorrelated, then $\mathbf Q_G=\mathbf I_{d_G}$. All eigenvalues equal one, so each component explains $1/d_G$ of the total variance. There is no unique leading direction, and PC1 alone does not capture a dominant pathway expression pattern.
 
 ### Single-Sample Gene Set Enrichment Analysis (ssGSEA)
 
@@ -231,35 +231,47 @@ Higher scores indicate that pathway genes tend to occur toward the high-expressi
 
 ### Gene Set Variation Analysis (GSVA)
 
-Like ssGSEA, Gene set variation analysis (GSVA) generates a pathway score for each patient using a rank-based enrichment approach. Before ranking genes within each patient, however, GSVA first transforms each gene’s expression using its estimated cumulative distribution across patients.GSVA is an unsupervised method that summarizes gene expression into one enrichment score per patient and pathway. Unlike PCA, GSVA uses a rank-based approach to describe the relative enrichment of pathway genes.
+Like ssGSEA, GSVA generates a pathway score for each patient using a rank-based enrichment approach. Before ranking genes within each patient, however, GSVA transforms each gene's expression using its estimated cumulative distribution across patients. Survival outcomes are not used to construct the scores.
 
-First, each gene's expression is transformed using an estimated cumulative distribution across patients. For continuous expression data, this distribution is estimated using a Gaussian kernel. The transformed values are then ranked within each patient and converted into rank-based weights. For continuous gene-expression data, GSVA estimates each gene's cumulative distribution function using a Gaussian kernel. For gene $g$ in patient $i$, the transformed expression is
+For continuous expression data, the cumulative distribution is estimated using a Gaussian kernel. For gene $g$ in patient $i$, the transformed expression is
 
 $$
 U_{ig}
 =
-\widehat{F}_g(X_{ig})
+\widehat F_g(X_{ig})
 =
 \frac{1}{n}
 \sum_{j=1}^{n}
 \int_{-\infty}^{(X_{ig}-X_{jg})/h_g}
 \frac{1}{\sqrt{2\pi}}
-\exp\left(-\frac{t^2}{2}\right)\,dt,
+\exp\left(-\frac{t^2}{2}\right)\,dt.
 $$
 
-where $X_{ig}$ is the expression of gene $g$ in patient $i$, $n$ is the number of patients in the batch being scored, and $h_g$ is the gene-specific bandwidth controlling the smoothness of the distribution estimate. For the Gaussian kernel used by GSVA, $h_g=s_g/4$, where $s_g$ is the standard deviation of gene $g$ across these patients.
-
-For patient $i$ and pathway $G$, let $g_{i1},\ldots,g_{ip}$ denote the ordered genes, where $p$ is the total number of eligible genes. At position $\ell$ in this ordering, define the running difference as
+Equivalently,
 
 $$
-D_{iG}(\ell)
+U_{ig}
 =
-P^{\mathrm{hit}}_{iG}(\ell)
--
-P^{\mathrm{miss}}_{iG}(\ell),
+\frac{1}{n}
+\sum_{j=1}^{n}
+\Phi\left(
+\frac{X_{ig}-X_{jg}}{h_g}
+\right),
 $$
 
-where
+where $\Phi(\cdot)$ is the standard normal cumulative distribution function. Here, $X_{ig}$ is the expression of gene $g$ in patient $i$, $n$ is the number of patients in the batch being scored, and $h_g$ is the gene-specific bandwidth. For the Gaussian kernel used here, $h_g=s_g/4$, where $s_g$ is the standard deviation of gene $g$ across these patients. The integration variable $t$ is a dummy variable, unrelated to survival time.
+
+The nonnegative rank-based weight is
+
+$$
+w_{ir}
+=
+\left|R_{ir}-\frac{p}{2}\right|^\tau,
+$$
+
+where $\tau$ controls the weighting and is set to 1 in this analysis. These weights give greater emphasis to genes near either end of the ranking than to genes near its middle.
+
+For pathway $G$, let $G^\ast$ denote its retained genes. At position $\ell$ in the ranked list, define
 
 $$
 P^{\mathrm{hit}}_{iG}(\ell)
@@ -286,9 +298,19 @@ p-|G^\ast|
 }.
 $$
 
-Here, $G^\ast$ denotes the retained genes in pathway $G$, $w_{ir}$ TODO: is the nonnegative rank-based weight assigned to gene $g_{ir}$, and $\mathbb{I}(\cdot)$ is the indicator function, equal to one when its condition holds and zero otherwise. Thus, $P^{\mathrm{hit}}_{iG}(\ell)$ is the cumulative normalized weight of pathway genes encountered up to position $\ell$, while $P^{\mathrm{miss}}_{iG}(\ell)$ is the proportion of non-pathway genes encountered up to that position.
+Here, $\mathbb{I}(\cdot)$ is the indicator function, equal to one when its condition holds and zero otherwise. Thus, $P^{\mathrm{hit}}_{iG}(\ell)$ is the cumulative normalized weight of pathway genes encountered up to position $\ell$, while $P^{\mathrm{miss}}_{iG}(\ell)$ is the proportion of non-pathway genes encountered up to that position.
 
-The GSVA score is
+The running difference is
+
+$$
+D_{iG}(\ell)
+=
+P^{\mathrm{hit}}_{iG}(\ell)
+-
+P^{\mathrm{miss}}_{iG}(\ell).
+$$
+
+Under the scoring rule used in this analysis (`maxDiff = TRUE`, `absRanking = FALSE`), the GSVA score is
 
 $$
 Z_{iG}^{(\mathrm{GSVA})}
@@ -300,15 +322,15 @@ $$
 
 with $D_{iG}(0)=0$. This is the largest positive excursion minus the magnitude of the largest negative excursion. A positive score indicates a larger positive excursion, whereas a negative score indicates a larger negative excursion.
 
-GSVA is implemented using the R package `GSVA`. Because the expression-distribution transformation depends on the patients included in the calculation, GSVA scores are cohort-dependent. Training and held-out batches are scored separately, and any subsequent score standardization uses training means and standard deviations.
-
-The resulting scalar or vector pathway representations will be used in direct and two-stage modeling approaches. Pathway-score centering and scaling will use estimates from the appropriate training folds. Predictive performance will be assessed using held-out predictions, as described in @sec-models and @sec-metrics.
+GSVA is implemented using the R package `GSVA`. Because the distribution transformation depends on the patients included in the calculation, GSVA scores are cohort-dependent. Training and held-out batches are scored separately, and subsequent score standardization uses training means and standard deviations.
 
 #### Extreme cases
 
-If all retained pathway genes have identical standardized expression profiles across training patients, they are perfectly positively correlated. PC1 then assigns equal loadings to all genes, up to an overall sign, and captures 100% of the pathway's expression variance. Its eigenvalue is $\lambda_{G1}=d_G$, while all remaining eigenvalues are zero. A single component therefore summarizes the entire pathway expression pattern.
+If all retained pathway genes appear before all genes outside the pathway, the running difference reaches 1 and never becomes negative. The GSVA score is therefore $Z_{iG}^{(\mathrm{GSVA})}=1$.
 
-At the opposite extreme, if the standardized pathway genes are mutually uncorrelated, then $\mathbf Q_G=\mathbf I_{d_G}$. All eigenvalues equal one, so each component explains $1/d_G$ of the total variance. There is no unique leading direction, and PC1 alone does not capture a dominant pathway expression pattern.
+Conversely, if all retained pathway genes appear after all genes outside the pathway, the running difference reaches $-1$ and never becomes positive, giving $Z_{iG}^{(\mathrm{GSVA})}=-1$.
+
+When pathway genes occur throughout the ranked list, positive and negative excursions may offset each other, producing a score closer to zero. A near-zero score indicates little net directional enrichment under this scoring rule; it does not necessarily indicate an absence of expression variation. Perfect correlation among pathway genes alone does not determine the GSVA score, because enrichment also depends on their positions relative to genes outside the pathway.
 
 ### Scalar and Vector Pathway Representations
 
@@ -490,8 +512,6 @@ The same cross-validation partitions will be used across all modeling approaches
 
 Models will be fitted for each combination of pathway collection, pathway-level scoring method, and predictive model described in the previous sections. For each pathway collection, pathway-level scores will first be generated using the scoring methods described in @sec-pathway-scoring. These scores will then be used as predictors in the models described in @sec-models.
 
-For example, combinations may include **KEGG + PCA + Cox, PH** **KEGG + GSVA + AFT**, **Reactome + PCA + Cox PH** and **Reactome + GSVA + AFT**. The same procedure will be repeated systematically across the specified pathway collections, pathway-scoring methods, predictive models, and datasets.
-
 Predictive performance will be assessed using the performance metrics described in @sec-metrics. Performance will be calculated using predictions from the held-out observations so that model evaluation is based on data that were not used for model fitting.
 
 ```{=latex}
@@ -553,20 +573,6 @@ Random forest models will be used as a tree-based alternative to regression mode
 ### XGBoost
 
 XGBoost will also be evaluated as a boosting-based machine-learning method. XGBoost sequentially combines decision trees to improve predictive performance and can model nonlinear relationships and interactions among pathway-level predictors.
-
-## Model Evaluation
-
-A consistent cross-validation framework will be used to compare all methods fairly. The same training and testing samples will be used when comparing pathway collections, scoring methods, and predictive models.
-
-Where necessary, tuning parameters will be selected using cross-validation within the training data.
-
-The models will be compared using measures of:
-
--   predictive performance,
--   model stability,
--   model complexity or number of selected predictors,
--   computational efficiency,
--   and interpretability.
 
 ## Comparison Across Methods
 
