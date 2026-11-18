@@ -53,15 +53,6 @@ performance_plot <- prepare_plot(summary_metrics) |>
   facet_wrap(~ metric, scales = "free_x", nrow = 1) +
   scale_y_discrete(labels = model_label) + scale_x_continuous(n.breaks = 3) +
   labs(title = "Five-fold held-out performance", x = "Metric value", y = NULL) + plot_theme
-improvement_plot <- prepare_plot(delta) |>
-  ggplot(aes(mean, model, colour = kind)) +
-  geom_vline(xintercept = 0, linetype = "dashed", colour = "firebrick") +
-  geom_segment(aes(x = mean - se_naive, xend = mean + se_naive, yend = model), linewidth = 0.6) +
-  geom_point(size = 2.2) + colours +
-  facet_wrap(~ metric, scales = "free_x", nrow = 1) +
-  scale_y_discrete(labels = model_label) + scale_x_continuous(n.breaks = 3) +
-  labs(title = "Gain over clinical-only prediction", x = "Improvement (positive is better)", y = NULL) + plot_theme
-
 curve_summary <- a$curves |> group_by(model, time) |>
   summarise(mean = mean(brier_score), se_naive = sd(brier_score) / sqrt(n()), .groups = "drop")
 brier_plot <- curve_summary |>
@@ -100,7 +91,7 @@ correlation_plot <- correlation_summary |>
   labs(title = "Overlap between pathway scores", x = NULL, y = NULL, fill = "Mean |r|") +
   plot_theme + theme(panel.grid = element_blank())
 
-plots <- list("01_cv_performance" = performance_plot, "02_cv_improvement" = improvement_plot,
+plots <- list("01_cv_performance" = performance_plot,
                 "03_cv_brier_curves" = brier_plot, "04_score_correlations" = correlation_plot)
 for (name in names(plots)) {
   for (extension in c("pdf", "png")) {
@@ -188,21 +179,22 @@ body <- c(
   sprintf("The clinical-only Cox model had a mean C-index of %s, Brier score of %s, and IBS of %s. The corresponding stacked-ridge estimates were %s, %s, and %s (@tbl-cv-performance; @fig-pathway-performance). The ten individual pathway models had mean C-indices ranging from %.3f to %.3f. These comparisons are descriptive and do not establish statistical superiority.",
             clinical[1], clinical[2], clinical[3], ridge[1], ridge[2], ridge[3], metric_range[1], metric_range[2]), "",
   md_table(performance_table), "", ": Five-fold held-out metrics, reported as mean ± naive fold SE (SD divided by sqrt(5)). P01–P10 identify pathways labelled in the figures. Brier score and C-index are evaluated at 809 days; IBS covers 219.2–809 days. {#tbl-cv-performance}", "",
-  "![Held-out performance across five common outer folds. Clinical-only Cox is red, stacked ridge is blue, and individual pathway models are black. Points show fold means; bars show ± one naive fold-based SE. Overlapping training sets make these descriptive SEs approximate; they are not confidence intervals.](figures/reactome_cv/01_cv_performance.pdf){#fig-pathway-performance width=\"100%\" fig-align=\"center\" fig-pos=\"htbp\"}", "",
+  "![Held-out performance across five common outer folds. Clinical-only Cox is red, stacked ridge is blue, and individual pathway models are black. Points show fold means; bars show ± one naive fold-based SE. Overlapping training sets make these descriptive SEs approximate; they are not confidence intervals.](figures/reactome_cv/01_cv_performance.pdf){#fig-pathway-performance width=\"100%\" fig-align=\"center\" fig-pos=\"H\"}", "",
   "### Added value beyond clinical information", "",
-  sprintf("The stacked model's mean paired changes relative to clinical-only Cox were %.3f for C-index improvement, %.3f for Brier-score improvement, and %.3f for IBS improvement (@fig-pathway-performance-test). Positive values favour stacking; negative values favour the clinical reference. Differences were calculated within each test fold before averaging. The bars describe fold-based uncertainty, not formal significance tests. The signs and magnitudes should be considered jointly; a gain in discrimination alone does not establish better survival-probability prediction.",
+  sprintf("The stacked model's mean paired changes relative to clinical-only Cox were %.3f for C-index improvement, %.3f for Brier-score improvement, and %.3f for IBS improvement. Positive values favour stacking; negative values favour the clinical reference. Differences were calculated within each test fold before averaging. These descriptive differences are not formal significance tests. The signs and magnitudes should be considered jointly; a gain in discrimination alone does not establish better survival-probability prediction.",
             ridge_delta$mean[match(metric_names, ridge_delta$metric)][1],
             ridge_delta$mean[match(metric_names, ridge_delta$metric)][2],
             ridge_delta$mean[match(metric_names, ridge_delta$metric)][3]), "", assessment, "",
-  "![Paired improvement over clinical-only Cox on the same outer test folds. Improvement is model minus clinical C-index, or clinical minus model Brier score/IBS, so positive values favour the pathway or stacked model in all panels. Bars show ± one naive fold SE; the zero line indicates equal performance.](figures/reactome_cv/02_cv_improvement.pdf){#fig-pathway-performance-test width=\"100%\" fig-align=\"center\" fig-pos=\"htbp\"}", "",
+  "```{=latex}", "\\Needspace{0.70\\textheight}", "```", "",
   "### Prediction error over follow-up", "",
   "The cross-validated Brier curves compare the clinical-only and stacked models throughout the common evaluation interval (@fig-cv-brier). A lower curve indicates lower probability-prediction error at that time. The IBS summarizes this error over the full interval; a difference at one time should not be interpreted as evidence of improvement throughout follow-up.", "", curve_assessment, "",
-  "![Mean held-out IPCW Brier curves across the five outer folds, with shaded bands showing ± one naive fold SE. Both models use the same test patients, time grid and censoring-weight convention. Lower values are better. Bands are descriptive and are not confidence intervals or significance tests.](figures/reactome_cv/03_cv_brier_curves.pdf){#fig-cv-brier width=\"100%\" fig-align=\"center\" fig-pos=\"htbp\"}", "",
+  "![Mean held-out IPCW Brier curves across the five outer folds, with shaded bands showing ± one naive fold SE. Both models use the same test patients, time grid and censoring-weight convention. Lower values are better. Bands are descriptive and are not confidence intervals or significance tests.](figures/reactome_cv/03_cv_brier_curves.pdf){#fig-cv-brier width=\"100%\" fig-align=\"center\" fig-pos=\"H\"}", "",
+  "```{=latex}", "\\Needspace{0.90\\textheight}", "```", "",
   "### Overlap between pathway scores", "",
   sprintf("The mean absolute correlations between GSVA and ssGSEA ranged from %.2f to %.2f across the ten pathways (@fig-score-correlations), indicating substantial overlap in their expression information. Absolute correlations are used because the sign of PC1 can reverse between fitted folds. This plot describes score redundancy, not survival association or prediction accuracy.", mean_pathway_cor[1], mean_pathway_cor[2]), "",
-  "![Mean absolute Pearson correlations across the five outer training partitions for each pathway. Values near one indicate stronger linear redundancy. Absolute correlations avoid cancellation from arbitrary PC1 sign reversals. Overlapping training sets are not independent replications, and no survival outcomes enter the correlations.](figures/reactome_cv/04_score_correlations.pdf){#fig-score-correlations width=\"100%\" fig-align=\"center\" fig-pos=\"htbp\"}", "",
+  "![Mean absolute Pearson correlations across the five outer training partitions for each pathway. Values near one indicate stronger linear redundancy. Absolute correlations avoid cancellation from arbitrary PC1 sign reversals. Overlapping training sets are not independent replications, and no survival outcomes enter the correlations.](figures/reactome_cv/04_score_correlations.pdf){#fig-score-correlations width=\"100%\" fig-align=\"center\" fig-pos=\"H\"}", "",
   "### Interpretation and scope", "",
   sprintf("The stacked ridge penalty was selected independently inside each outer training set; the five selected penalties were %s. This pilot compares clinical-only, ten pathway-specific, and stacked prediction on shared folds. It does not yet establish the relative merits of gene-level models, single versus vector pathway scores, or biological versus matched random gene sets. The pathway identities and prediction window were fixed in the earlier exploratory analysis, so the present results are internal exploratory validation rather than independent confirmation. GSVA remains cohort-dependent because held-out batches are scored together.", penalties), ""
 )
 write_lines(body, file.path(report_folder, "results_draft.qmd"))
-message("Four figures, two tables, and editable draft saved. Copy the draft into thesis.qmd only when ready.")
+message("Three figures, two tables, and editable draft saved. Copy the draft into thesis.qmd only when ready.")
