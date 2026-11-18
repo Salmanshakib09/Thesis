@@ -538,16 +538,6 @@ Models will be fitted for each combination of pathway collection, pathway-level 
 
 Predictive performance will be assessed using the performance metrics described in @sec-metrics. Performance will be calculated using predictions from the held-out observations so that model evaluation is based on data that were not used for model fitting.
 
-## Comparison Across Methods
-
-The final comparison will consider combinations of:
-
--   pathway collection,
--   pathway-scoring method,
--   predictive model,
--   and dataset.
-
-
 ```{=latex}
 \newpage
 ```
@@ -558,21 +548,21 @@ The final comparison will consider combinations of:
 
 Of 492 patients with valid survival outcomes, 29 were excluded for missing or invalid clinical covariates, leaving 463 patients, including 167 observed deaths. The clinical characteristics are summarized in @tbl-cohort. Each included patient was evaluated once in an outer test fold; the same fold assignments were used for every predictive model.
 
-|Characteristic                                |            Value|
-|:---------------------------------------------|----------------:|
-|Patients with valid survival data             |              492|
-|Excluded: missing/invalid clinical covariates |               29|
-|Patients included                             |              463|
-|Observed deaths, n (%)                        |      167 (36.1%)|
-|Censored, n (%)                               |      296 (63.9%)|
-|Age, median (IQR), years                      | 66.0 (59.0–72.0)|
-|Median follow-up (reverse KM), days           |            862.0|
-|Female, n (%)                                 |      251 (54.2%)|
-|Male, n (%)                                   |      212 (45.8%)|
-|Stage I, n (%)                                |      252 (54.4%)|
-|Stage II, n (%)                               |      108 (23.3%)|
-|Stage III, n (%)                              |       78 (16.8%)|
-|Stage IV, n (%)                               |        25 (5.4%)|
+| Characteristic                                |            Value |
+|:----------------------------------------------|-----------------:|
+| Patients with valid survival data             |              492 |
+| Excluded: missing/invalid clinical covariates |               29 |
+| Patients included                             |              463 |
+| Observed deaths, n (%)                        |      167 (36.1%) |
+| Censored, n (%)                               |      296 (63.9%) |
+| Age, median (IQR), years                      | 66.0 (59.0–72.0) |
+| Median follow-up (reverse KM), days           |            862.0 |
+| Female, n (%)                                 |      251 (54.2%) |
+| Male, n (%)                                   |      212 (45.8%) |
+| Stage I, n (%)                                |      252 (54.4%) |
+| Stage II, n (%)                               |      108 (23.3%) |
+| Stage III, n (%)                              |       78 (16.8%) |
+| Stage IV, n (%)                               |        25 (5.4%) |
 
 : Patient characteristics for the complete-case analysis. Percentages use the included cohort as denominator; follow-up is estimated by reverse Kaplan–Meier. {#tbl-cohort}
 
@@ -584,20 +574,20 @@ Of 492 patients with valid survival outcomes, 29 were excluded for missing or in
 
 The clinical-only Cox model had a mean C-index of 0.635 (SE 0.016), Brier score of 0.184 (SE 0.004), and IBS of 0.125 (SE 0.003). The corresponding stacked-ridge estimates were 0.647 (SE 0.021), 0.186 (SE 0.003), and 0.126 (SE 0.003) (@tbl-cv-performance; @fig-pathway-performance). The ten individual pathway models had mean C-indices ranging from 0.605 to 0.665. These comparisons are descriptive and do not establish statistical superiority.
 
-|Model             |       C-index|         Brier|           IBS|
-|:-----------------|-------------:|-------------:|-------------:|
-|Clinical-only Cox | 0.635 ± 0.016| 0.184 ± 0.004| 0.125 ± 0.003|
-|Stacked ridge     | 0.647 ± 0.021| 0.186 ± 0.003| 0.126 ± 0.003|
-|P01               | 0.662 ± 0.021| 0.185 ± 0.004| 0.124 ± 0.003|
-|P02               | 0.647 ± 0.026| 0.186 ± 0.005| 0.124 ± 0.003|
-|P03               | 0.618 ± 0.018| 0.189 ± 0.004| 0.126 ± 0.003|
-|P04               | 0.625 ± 0.015| 0.191 ± 0.006| 0.128 ± 0.003|
-|P05               | 0.647 ± 0.027| 0.187 ± 0.005| 0.126 ± 0.002|
-|P06               | 0.605 ± 0.017| 0.190 ± 0.004| 0.127 ± 0.003|
-|P07               | 0.660 ± 0.022| 0.184 ± 0.006| 0.124 ± 0.003|
-|P08               | 0.665 ± 0.016| 0.183 ± 0.002| 0.124 ± 0.003|
-|P09               | 0.631 ± 0.023| 0.190 ± 0.004| 0.126 ± 0.003|
-|P10               | 0.658 ± 0.015| 0.186 ± 0.003| 0.125 ± 0.003|
+| Model             |       C-index |         Brier |           IBS |
+|:------------------|--------------:|--------------:|--------------:|
+| Clinical-only Cox | 0.635 ± 0.016 | 0.184 ± 0.004 | 0.125 ± 0.003 |
+| Stacked ridge     | 0.647 ± 0.021 | 0.186 ± 0.003 | 0.126 ± 0.003 |
+| P01               | 0.662 ± 0.021 | 0.185 ± 0.004 | 0.124 ± 0.003 |
+| P02               | 0.647 ± 0.026 | 0.186 ± 0.005 | 0.124 ± 0.003 |
+| P03               | 0.618 ± 0.018 | 0.189 ± 0.004 | 0.126 ± 0.003 |
+| P04               | 0.625 ± 0.015 | 0.191 ± 0.006 | 0.128 ± 0.003 |
+| P05               | 0.647 ± 0.027 | 0.187 ± 0.005 | 0.126 ± 0.002 |
+| P06               | 0.605 ± 0.017 | 0.190 ± 0.004 | 0.127 ± 0.003 |
+| P07               | 0.660 ± 0.022 | 0.184 ± 0.006 | 0.124 ± 0.003 |
+| P08               | 0.665 ± 0.016 | 0.183 ± 0.002 | 0.124 ± 0.003 |
+| P09               | 0.631 ± 0.023 | 0.190 ± 0.004 | 0.126 ± 0.003 |
+| P10               | 0.658 ± 0.015 | 0.186 ± 0.003 | 0.125 ± 0.003 |
 
 : Five-fold held-out metrics, reported as mean ± naive fold SE (SD divided by sqrt(5)). P01–P10 identify pathways labelled in the figures. Brier score and C-index are evaluated at 809 days; IBS covers 219.2–809 days. {#tbl-cv-performance}
 
@@ -628,6 +618,5 @@ The mean absolute correlations between GSVA and ssGSEA ranged from 0.74 to 0.95 
 ### Interpretation and scope
 
 The stacked ridge penalty was selected independently inside each outer training set; the five selected penalties were 10, 100, 100, 100, 100. This pilot compares clinical-only, ten pathway-specific, and stacked prediction on shared folds. It does not yet establish the relative merits of gene-level models, single versus vector pathway scores, or biological versus matched random gene sets. The pathway identities and prediction window were fixed in the earlier exploratory analysis, so the present results are internal exploratory validation rather than independent confirmation. GSVA remains cohort-dependent because held-out batches are scored together.
-
 
 # References :
