@@ -398,6 +398,24 @@ $$\exp(\beta_j).$$
 
 A time ratio greater than 1 indicates that survival time is multiplied by a factor greater than 1 as the predictor increases, whereas a time ratio less than 1 indicates shorter survival time.
 
+### Penalized Regression
+
+Three penalized regression approaches will be compared:
+
+-   **LASSO regression**, which can shrink some coefficients exactly to zero and therefore perform variable selection.
+-   **Ridge regression**, which shrinks coefficients toward zero but generally retains all predictors.
+-   **Elastic Net**, which combines the LASSO and ridge penalties.
+
+These methods will allow comparison of different approaches for handling a potentially large number of correlated pathway predictors.
+
+### Random Forest
+
+Random forest models will be used as a tree-based alternative to regression models. Random forests can capture nonlinear relationships and interactions between pathway scores without requiring a prespecified linear relationship.
+
+### XGBoost
+
+XGBoost will also be evaluated as a boosting-based machine-learning method. XGBoost sequentially combines decision trees to improve predictive performance and can model nonlinear relationships and interactions among pathway-level predictors.
+
 ## Performance Evaluation Metrics {#sec-metrics}
 
 ### Censoring-adjusted Root Mean Squared Error (RMSE)
@@ -510,77 +528,15 @@ Predictive performance will be evaluated using $k$-fold cross-validation. The da
 
 For the ten-pathway Reactome analysis, $k=5$ folds are stratified by death indicator and cancer stage, using a fixed random seed. The same ten pathway identities from the exploratory pilot are retained without further outcome screening. Within each training partition, gene-variance filtering, PCA loadings, score centering and scaling, and Cox coefficients are refitted. GSVA is calculated separately in each training and held-out batch and remains cohort-dependent. Each pathway model uses PC1, GSVA, ssGSEA, age, sex, and stage; the clinical-only reference uses age, sex, and stage. The prespecified pilot window is retained for comparability: Brier score and Uno's C-index are evaluated at 809 days, and IBS over 219.2–809 days.
 
+The stacked ridge model is evaluated on the same outer folds. Within each outer training partition, three inner folds select the ridge penalty by validation-size-weighted IBS from the candidate values 0.1, 1, 10, 100, 1000, 10000, 100000, and 1000000. Each inner tuning-training set builds its own three-fold out-of-fold pathway predictions; these features are not reused from a larger partition that includes its validation patients. Pathway predictions are represented as log cumulative hazards at 730 days to align their reference across fitted fold models. After penalty selection, a fresh three-fold out-of-fold feature matrix is generated for all outer training patients and used to fit ridge. Pathway models fitted on all outer training patients provide the features for the untouched outer test patients. Age, sex, and stage enter the first-stage pathway models and are not included a second time in ridge.
+
 Held-out metrics are summarized by their mean across the five folds. Error bars show one approximate fold-based standard error, calculated as the standard deviation of the five metric estimates divided by $\sqrt{5}$. Because training samples overlap between folds, this naive standard error ignores dependence and is a descriptive summary rather than a confidence interval or significance test. Pathway improvements are also calculated relative to the clinical model within each fold before summarizing. The pathway identities and evaluation window were established in the earlier pilot, so this remains an exploratory internal validation rather than an independent confirmatory analysis.
 
-The same cross-validation partitions will be used across all modeling approaches to ensure a fair comparison. Model fitting and any data-dependent estimation will be performed using only the training data within each fold to avoid information leakage. The fitted models will then be used to generate predictions for patients in the corresponding held-out test fold.
+The same outer cross-validation partitions are used across modeling approaches to ensure a fair comparison. Model coefficients, PCA loadings, training scaling parameters, and tuning choices are estimated without outer test outcomes. GSVA distribution estimation is performed separately within training and held-out batches, so this analysis evaluates batch prediction rather than a fully frozen single-patient transformation.
 
 Models will be fitted for each combination of pathway collection, pathway-level scoring method, and predictive model described in the previous sections. For each pathway collection, pathway-level scores will first be generated using the scoring methods described in @sec-pathway-scoring. These scores will then be used as predictors in the models described in @sec-models.
 
 Predictive performance will be assessed using the performance metrics described in @sec-metrics. Performance will be calculated using predictions from the held-out observations so that model evaluation is based on data that were not used for model fitting.
-
-```{=latex}
-\clearpage
-```
-
-## Results
-
-![Five-fold held-out performance in 463 complete-case patients (167 deaths) for ten Reactome pathway-specific Cox models and the clinical-only reference (red). Points show equally weighted means across folds; bars show plus or minus one naive fold-based SE, calculated as fold SD divided by $\sqrt{5}$. All models use the same folds. Larger C-index and smaller Brier score or IBS indicate better prediction. The overlapping training samples make these SEs approximate; the bars are not confidence intervals.](figures/reactome_cv/01_cv_performance.pdf){#fig-pathway-performance width="100%" fig-align="center" fig-pos="H"}
-
-```{=latex}
-\clearpage
-```
-
-![Paired improvement over clinical-only Cox across the same five test folds. Improvement is pathway minus clinical C-index, or clinical minus pathway Brier score and IBS, so positive values favour pathway models in every panel. Points show mean within-fold improvements and bars show plus or minus one naive fold-based SE. The dashed zero line means no improvement; these bars do not provide a formal significance test.](figures/reactome_cv/02_cv_improvement.pdf){#fig-pathway-performance-test width="100%" fig-align="center" fig-pos="H"}
-
-```{=latex}
-\clearpage
-```
-
-### Original single-split exploratory analyses
-
-The remaining association, correlation, stacked-ridge, and Brier-curve figures describe the earlier 323-patient training / 140-patient test split. They have not been re-estimated by the five-fold analysis above. In particular, the stacked model is not included in this cross-validation comparison.
-
-![Adjusted associations between pathway scores and mortality hazard in 323 training patients (116 deaths). Points show hazard ratios per training standard deviation and lines show individual 95% confidence intervals; the dashed reference is HR = 1. Each estimate adjusts for the other two scores, age, sex and stage. None of the 30 score tests passes Benjamini–Hochberg adjustment at 5% FDR. PC1 sign is arbitrary; these associations do not establish predictive improvement.](figures/reactome_readable/01_score_associations_readable.pdf){#fig-pathway-associations width="100%" fig-align="center" fig-pos="H"}
-
-```{=latex}
-\clearpage
-```
-
-![Pearson correlations between PC1, GSVA and ssGSEA scores across 323 training patients. Values near either -1 or +1 indicate strong linear dependence; zero indicates no linear correlation. PC1 sign is arbitrary. This comparison uses no survival outcomes and does not measure prediction accuracy.](figures/reactome_readable/02_score_correlations_readable.pdf){#fig-score-correlations width="100%" fig-align="center" fig-pos="H"}
-
-```{=latex}
-\clearpage
-```
-
-![Training and held-out test performance of ten-pathway stacked ridge versus clinical-only Cox on identical patients. Clinical covariates also enter each first-stage pathway model. Training metrics are apparent, including ridge metrics calculated on out-of-fold pathway features: they are not out-of-fold evaluation of the entire stack. Brier scores are evaluated at 809 days and IBS over 219.2–809 days. One test split without confidence intervals does not establish improvement over gene-level or random-pathway models.](figures/reactome_readable/04_stacked_vs_clinical_readable.pdf){#fig-stacked-performance width="100%" fig-align="center" fig-pos="H"}
-
-```{=latex}
-\clearpage
-```
-
-![Brier-score curves for stacked ridge and the clinical-only Cox reference, evaluated on the same time grid using the same censoring-weight convention. Panels show training and test patients; lower values indicate lower prediction error. Training performance is apparent. Differences on this single split are not significance tests, and GSVA scores remain cohort-dependent.](figures/reactome_readable/05_brier_curves_readable.pdf){#fig-brier-curves width="100%" fig-align="center" fig-pos="H"}
-
-```{=latex}
-\clearpage
-```
-
-### Penalized Regression
-
-Three penalized regression approaches will be compared:
-
--   **LASSO regression**, which can shrink some coefficients exactly to zero and therefore perform variable selection.
--   **Ridge regression**, which shrinks coefficients toward zero but generally retains all predictors.
--   **Elastic Net**, which combines the LASSO and ridge penalties.
-
-These methods will allow comparison of different approaches for handling a potentially large number of correlated pathway predictors.
-
-### Random Forest
-
-Random forest models will be used as a tree-based alternative to regression models. Random forests can capture nonlinear relationships and interactions between pathway scores without requiring a prespecified linear relationship.
-
-### XGBoost
-
-XGBoost will also be evaluated as a boosting-based machine-learning method. XGBoost sequentially combines decision trees to improve predictive performance and can model nonlinear relationships and interactions among pathway-level predictors.
 
 ## Comparison Across Methods
 
@@ -590,5 +546,88 @@ The final comparison will consider combinations of:
 -   pathway-scoring method,
 -   predictive model,
 -   and dataset.
+
+
+```{=latex}
+\newpage
+```
+
+## Results
+
+### Study cohort
+
+Of 492 patients with valid survival outcomes, 29 were excluded for missing or invalid clinical covariates, leaving 463 patients, including 167 observed deaths. The clinical characteristics are summarized in @tbl-cohort. Each included patient was evaluated once in an outer test fold; the same fold assignments were used for every predictive model.
+
+|Characteristic                                |            Value|
+|:---------------------------------------------|----------------:|
+|Patients with valid survival data             |              492|
+|Excluded: missing/invalid clinical covariates |               29|
+|Patients included                             |              463|
+|Observed deaths, n (%)                        |      167 (36.1%)|
+|Censored, n (%)                               |      296 (63.9%)|
+|Age, median (IQR), years                      | 66.0 (59.0–72.0)|
+|Median follow-up (reverse KM), days           |            862.0|
+|Female, n (%)                                 |      251 (54.2%)|
+|Male, n (%)                                   |      212 (45.8%)|
+|Stage I, n (%)                                |      252 (54.4%)|
+|Stage II, n (%)                               |      108 (23.3%)|
+|Stage III, n (%)                              |       78 (16.8%)|
+|Stage IV, n (%)                               |        25 (5.4%)|
+
+: Patient characteristics for the complete-case analysis. Percentages use the included cohort as denominator; follow-up is estimated by reverse Kaplan–Meier. {#tbl-cohort}
+
+```{=latex}
+\newpage
+```
+
+### Cross-validated predictive performance
+
+The clinical-only Cox model had a mean C-index of 0.635 (SE 0.016), Brier score of 0.184 (SE 0.004), and IBS of 0.125 (SE 0.003). The corresponding stacked-ridge estimates were 0.647 (SE 0.021), 0.186 (SE 0.003), and 0.126 (SE 0.003) (@tbl-cv-performance; @fig-pathway-performance). The ten individual pathway models had mean C-indices ranging from 0.605 to 0.665. These comparisons are descriptive and do not establish statistical superiority.
+
+|Model             |       C-index|         Brier|           IBS|
+|:-----------------|-------------:|-------------:|-------------:|
+|Clinical-only Cox | 0.635 ± 0.016| 0.184 ± 0.004| 0.125 ± 0.003|
+|Stacked ridge     | 0.647 ± 0.021| 0.186 ± 0.003| 0.126 ± 0.003|
+|P01               | 0.662 ± 0.021| 0.185 ± 0.004| 0.124 ± 0.003|
+|P02               | 0.647 ± 0.026| 0.186 ± 0.005| 0.124 ± 0.003|
+|P03               | 0.618 ± 0.018| 0.189 ± 0.004| 0.126 ± 0.003|
+|P04               | 0.625 ± 0.015| 0.191 ± 0.006| 0.128 ± 0.003|
+|P05               | 0.647 ± 0.027| 0.187 ± 0.005| 0.126 ± 0.002|
+|P06               | 0.605 ± 0.017| 0.190 ± 0.004| 0.127 ± 0.003|
+|P07               | 0.660 ± 0.022| 0.184 ± 0.006| 0.124 ± 0.003|
+|P08               | 0.665 ± 0.016| 0.183 ± 0.002| 0.124 ± 0.003|
+|P09               | 0.631 ± 0.023| 0.190 ± 0.004| 0.126 ± 0.003|
+|P10               | 0.658 ± 0.015| 0.186 ± 0.003| 0.125 ± 0.003|
+
+: Five-fold held-out metrics, reported as mean ± naive fold SE (SD divided by sqrt(5)). P01–P10 identify pathways labelled in the figures. Brier score and C-index are evaluated at 809 days; IBS covers 219.2–809 days. {#tbl-cv-performance}
+
+![Held-out performance across five common outer folds. Clinical-only Cox is red, stacked ridge is blue, and individual pathway models are black. Points show fold means; bars show ± one naive fold-based SE. Overlapping training sets make these descriptive SEs approximate; they are not confidence intervals.](figures/reactome_cv/01_cv_performance.pdf){#fig-pathway-performance width="100%" fig-align="center" fig-pos="htbp"}
+
+### Added value beyond clinical information
+
+The stacked model's mean paired changes relative to clinical-only Cox were 0.012 for C-index improvement, -0.002 for Brier-score improvement, and -0.001 for IBS improvement (@fig-pathway-performance-test). Positive values favour stacking; negative values favour the clinical reference. Differences were calculated within each test fold before averaging. The bars describe fold-based uncertainty, not formal significance tests. The signs and magnitudes should be considered jointly; a gain in discrimination alone does not establish better survival-probability prediction.
+
+The direction of the differences varied across metrics; stacking did not show uniform numerical improvement.
+
+![Paired improvement over clinical-only Cox on the same outer test folds. Improvement is model minus clinical C-index, or clinical minus model Brier score/IBS, so positive values favour the pathway or stacked model in all panels. Bars show ± one naive fold SE; the zero line indicates equal performance.](figures/reactome_cv/02_cv_improvement.pdf){#fig-pathway-performance-test width="100%" fig-align="center" fig-pos="htbp"}
+
+### Prediction error over follow-up
+
+The cross-validated Brier curves compare the clinical-only and stacked models throughout the common evaluation interval (@fig-cv-brier). A lower curve indicates lower probability-prediction error at that time. The IBS summarizes this error over the full interval; a difference at one time should not be interpreted as evidence of improvement throughout follow-up.
+
+The mean stacked-ridge curve was higher (worse) than clinical-only Cox over most of the evaluated grid.
+
+![Mean held-out IPCW Brier curves across the five outer folds, with shaded bands showing ± one naive fold SE. Both models use the same test patients, time grid and censoring-weight convention. Lower values are better. Bands are descriptive and are not confidence intervals or significance tests.](figures/reactome_cv/03_cv_brier_curves.pdf){#fig-cv-brier width="100%" fig-align="center" fig-pos="htbp"}
+
+### Overlap between pathway scores
+
+The mean absolute correlations between GSVA and ssGSEA ranged from 0.74 to 0.95 across the ten pathways (@fig-score-correlations), indicating substantial overlap in their expression information. Absolute correlations are used because the sign of PC1 can reverse between fitted folds. This plot describes score redundancy, not survival association or prediction accuracy.
+
+![Mean absolute Pearson correlations across the five outer training partitions for each pathway. Values near one indicate stronger linear redundancy. Absolute correlations avoid cancellation from arbitrary PC1 sign reversals. Overlapping training sets are not independent replications, and no survival outcomes enter the correlations.](figures/reactome_cv/04_score_correlations.pdf){#fig-score-correlations width="100%" fig-align="center" fig-pos="htbp"}
+
+### Interpretation and scope
+
+The stacked ridge penalty was selected independently inside each outer training set; the five selected penalties were 10, 100, 100, 100, 100. This pilot compares clinical-only, ten pathway-specific, and stacked prediction on shared folds. It does not yet establish the relative merits of gene-level models, single versus vector pathway scores, or biological versus matched random gene sets. The pathway identities and prediction window were fixed in the earlier exploratory analysis, so the present results are internal exploratory validation rather than independent confirmation. GSVA remains cohort-dependent because held-out batches are scored together.
+
 
 # References :
