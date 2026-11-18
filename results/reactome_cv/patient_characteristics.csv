@@ -1,0 +1,14 @@
+Characteristic,Value
+Patients with valid survival data,492
+Excluded: missing/invalid clinical covariates,29
+Patients included,463
+"Observed deaths, n (%)",167 (36.1%)
+"Censored, n (%)",296 (63.9%)
+"Age, median (IQR), years",66.0 (59.0–72.0)
+"Median follow-up (reverse KM), days",862.0
+"Female, n (%)",251 (54.2%)
+"Male, n (%)",212 (45.8%)
+"Stage I, n (%)",252 (54.4%)
+"Stage II, n (%)",108 (23.3%)
+"Stage III, n (%)",78 (16.8%)
+"Stage IV, n (%)",25 (5.4%)

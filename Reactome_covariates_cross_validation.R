@@ -1,5 +1,5 @@
-# Five-fold validation of ten fixed Reactome pathway Cox models plus clinical Cox.
-# Run from the project root after 01_download_LUAD.R. Does not fit stacked ridge.
+# Five-fold validation of clinical, pathway-specific, and stacked ridge Cox models.
+# Run from the project root after 01_download_LUAD.R. Then run the results script.
 # The pathways were fixed in the earlier exploratory pilot, not selected by CV outcomes.
 
 library(tidyverse)
@@ -13,12 +13,20 @@ source("metric_functions/02_brier_score.R")
 k_folds <- 5L
 fold_seed <- 20261117L
 n_pathways <- 10L
+inner_folds <- 3L
+stacking_folds <- 3L
+ridge_penalties <- c(0.1, 1, 10, 100, 1000, 10000, 100000, 1000000)
+stacking_horizon <- 730
+# Two independent outer folds at a time on Mac/Linux; Windows uses one worker.
+workers <- if (.Platform$OS.type == "windows") 1L else 2L
 # Prespecified pilot time window; identical prediction tasks in every fold.
 evaluation_times <- seq(219.2, 809, length.out = 51)
 output_folder <- "data/processed/reactome_covariates_cv"
 figure_folder <- "figures/reactome_cv"
 dir.create(output_folder, recursive = TRUE, showWarnings = FALSE)
 dir.create(figure_folder, recursive = TRUE, showWarnings = FALSE)
+cache_folder <- file.path(output_folder, "nested_cache")
+dir.create(cache_folder, recursive = TRUE, showWarnings = FALSE)
 
 # 1. Assemble the same complete-case cohort as the original analysis ----
 
@@ -318,116 +326,195 @@ evaluate_model <- function(model, data, train, model_name, fold) {
   )
 }
 
-fold_results <- vector("list", k_folds)
-for (fold in seq_len(k_folds)) {
+
+# 5. Leakage-safe nested stacking ----
+# Changes to data, score functions or package versions invalidate cached fits.
+cache_signature <- digest::digest(list(
+  expression_matrix, survival_data, selected_genes,
+  body(fit_pathways), body(fit_pathway_model), body(pathway_pca), body(pathway_gsva),
+  packageVersion("GSVA"), packageVersion("survival"), packageVersion("stats")
+))
+
+cached_pathways <- function(train, validation, key) {
+  file <- file.path(cache_folder, paste0(key, ".rds"))
+  identity <- list(signature = cache_signature, training = train$patient_id,
+                    validation = validation$patient_id)
+  if (file.exists(file)) {
+    saved <- readRDS(file)
+    if (identical(saved$identity, identity)) return(saved$models)
+  }
+  models <- fit_pathways(train, validation)
+  saveRDS(list(identity = identity, models = models), file)
+  models
+}
+
+make_inner_folds <- function(data, n, seed) {
+  set.seed(seed)
+  ids <- integer(nrow(data))
+  strata <- split(seq_len(nrow(data)), interaction(data$OS_event, data$stage, drop = TRUE))
+  for (rows in strata) {
+    values <- rep(sample.int(n), length.out = length(rows))
+    ids[rows] <- values[sample.int(length(rows))]
+  }
+  stopifnot(all(tabulate(ids, nbins = n) > 0))
+  ids
+}
+
+# Log cumulative hazard at a fixed horizon gives aligned risk features across
+# fold models (centered linear predictors alone have arbitrary fold offsets).
+stack_features <- function(models) {
+  map(models, function(result) {
+    baseline <- basehaz(result$model, centered = TRUE)
+    h <- tail(baseline$hazard[baseline$time <= stacking_horizon], 1)
+    stopifnot(length(h) == 1, is.finite(h), h > 0)
+    log(h) + result$test_predictions$risk
+  }) |> do.call(what = cbind)
+}
+
+prepare_stack <- function(train, validation, seed, key, models = NULL) {
+  stopifnot(!any(train$patient_id %in% validation$patient_id))
+  folds <- make_inner_folds(train, stacking_folds, seed)
+  oof <- matrix(NA_real_, nrow(train), n_pathways,
+                 dimnames = list(train$patient_id, fixed_pathways))
+  for (fold in seq_len(stacking_folds)) {
+    held <- which(folds == fold)
+    base <- cached_pathways(train[-held, ], train[held, ],
+                             paste0(key, "_oof", fold))
+    oof[held, ] <- stack_features(base)
+  }
+  if (is.null(models)) {
+    models <- cached_pathways(train, validation, paste0(key, "_validation"))
+  }
+  valid <- stack_features(models)
+  center <- colMeans(oof)
+  spread <- apply(oof, 2, sd)
+  stopifnot(all(is.finite(oof)), all(is.finite(valid)), all(spread > 0))
+  list(training = data.frame(scores = I(scale(oof, center, spread))),
+       validation = data.frame(scores = I(scale(valid, center, spread))),
+       oof = oof, folds = folds, center = center, scale = spread,
+       training_ids = train$patient_id, validation_ids = validation$patient_id)
+}
+
+fit_ridge <- function(train, stack, penalty) {
+  formula <- as.formula(paste0(
+    "Surv(OS_time, OS_event) ~ ridge(scores, theta = ", penalty, ", scale = FALSE)"
+  ), env = globalenv())
+  model <- withCallingHandlers(
+    coxph(formula, data = bind_cols(train, stack$training), model = TRUE, x = TRUE,
+           na.action = na.fail, control = coxph.control(iter.max = 100)),
+    warning = function(w) stop(conditionMessage(w), call. = FALSE)
+  )
+  stopifnot(all(is.finite(coef(model))))
+  model
+}
+
+integrate_brier <- function(outcomes, prediction) {
+  curve <- map_dbl(seq_along(evaluation_times), function(j) {
+    brier_score(outcomes$OS_time, outcomes$OS_event,
+                 prediction$survival[, j], evaluation_times[j])
+  })
+  sum(diff(evaluation_times) * (head(curve, -1) + tail(curve, -1)) / 2) /
+    diff(range(evaluation_times))
+}
+
+run_outer_fold <- function(fold) {
+  log_file <- file.path(output_folder, paste0("outer_", fold, ".log"))
+  log_connection <- file(log_file, open = "wt")
+  sink(log_connection, type = "message")
+  on.exit({ sink(type = "message"); close(log_connection) })
   train <- survival_data[fold_ids != fold, ]
   test <- survival_data[fold_ids == fold, ]
-  stopifnot(!any(train$patient_id %in% test$patient_id))
-  message("Starting outer fold ", fold, "/", k_folds,
-          ": train n = ", nrow(train), "; test n = ", nrow(test))
-  models <- fit_pathways(train, test)
+  message("Outer fold ", fold, ": ", nrow(train), " training / ", nrow(test), " test")
+  models <- cached_pathways(train, test, paste0("outer", fold))
   clinical <- coxph(Surv(OS_time, OS_event) ~ age + sex + stage,
                     data = train, x = TRUE, model = TRUE, na.action = na.fail)
   stopifnot(all(is.finite(coef(clinical))))
+
+  # Each tuning-training set builds its OWN OOF features. Reusing an outer OOF
+  # matrix here would allow tuning-validation outcomes into its predictors.
+  tuning_folds <- make_inner_folds(train, inner_folds, fold_seed + 100L * fold)
+  tuning <- map_dfr(seq_len(inner_folds), function(inner) {
+    message("Outer ", fold, ": tuning fold ", inner, "/", inner_folds)
+    held <- which(tuning_folds == inner)
+    a <- train[-held, ]
+    b <- train[held, ]
+    stack <- prepare_stack(a, b, fold_seed + 1000L * fold + inner,
+                             paste0("outer", fold, "_tune", inner))
+    map_dfr(ridge_penalties, function(penalty) {
+      loss <- tryCatch({
+        model <- fit_ridge(a, stack, penalty)
+        value <- integrate_brier(b, predict_survival(model, stack$validation))
+        list(ibs = value, error = NA_character_)
+      }, error = function(e) list(ibs = Inf, error = conditionMessage(e)))
+      tibble(outer_fold = fold, inner_fold = inner, penalty,
+              ibs = loss$ibs, n_validation = nrow(b), fit_error = loss$error)
+    })
+  })
+  selected <- tuning |> group_by(penalty) |>
+    summarise(mean_ibs = weighted.mean(ibs, n_validation), .groups = "drop") |>
+    filter(is.finite(mean_ibs)) |> arrange(mean_ibs, desc(penalty)) |> slice_head(n = 1)
+  stopifnot(nrow(selected) == 1)
+  message("Outer ", fold, ": selected penalty ", selected$penalty)
+  stack <- prepare_stack(train, test, fold_seed + 10000L * fold,
+                           paste0("outer", fold, "_final"), models)
+  ridge <- fit_ridge(train, stack, selected$penalty)
+
   pathway_metrics <- imap(models, function(result, pathway) {
     stopifnot(identical(test$patient_id, result$test_scores$patient_id))
     data <- left_join(test, result$test_scores, by = "patient_id")
     evaluate_model(result$model, data, train, pathway, fold)
   }) |> list_rbind()
-  fold_results[[fold]] <- bind_rows(
-    evaluate_model(clinical, test, train, "Clinical-only Cox", fold), pathway_metrics
+  metrics <- bind_rows(
+    evaluate_model(clinical, test, train, "Clinical-only Cox", fold),
+    pathway_metrics,
+    evaluate_model(ridge, bind_cols(test, stack$validation), train,
+                     "Stacked ridge", fold)
   )
-  saveRDS(list(metrics = fold_results[[fold]], models = models,
-               clinical_model = clinical, training_ids = train$patient_id,
-               test_ids = test$patient_id),
-           file.path(output_folder, paste0("fold_", fold, ".rds")))
-  message("Completed outer fold ", fold, "/", k_folds)
+  # Retain held-out probability curves and patient predictions for audit.
+  curve_rows <- map_dfr(c("Clinical-only Cox", "Stacked ridge"), function(name) {
+    prediction <- if (name == "Clinical-only Cox") predict_survival(clinical, test) else
+      predict_survival(ridge, stack$validation)
+    tibble(fold, model = name, time = evaluation_times,
+            brier_score = map_dbl(seq_along(evaluation_times), function(j) {
+              brier_score(test$OS_time, test$OS_event,
+                            prediction$survival[, j], evaluation_times[j])
+            }))
+  })
+  predictions <- tibble(patient_id = test$patient_id, fold,
+                         clinical_risk = predict_survival(clinical, test)$risk,
+                         ridge_risk = predict_survival(ridge, stack$validation)$risk)
+  saved <- list(metrics = metrics, models = models, clinical_model = clinical,
+                  ridge_model = ridge, stack = stack, tuning = tuning,
+                  tuning_folds = tuning_folds, selected_penalty = selected$penalty,
+                  curves = curve_rows, predictions = predictions,
+                  training_ids = train$patient_id, test_ids = test$patient_id)
+  saveRDS(saved, file.path(output_folder, paste0("nested_fold_", fold, ".rds")))
+  message("Completed outer fold ", fold)
+  saved[c("metrics", "curves", "predictions", "tuning", "selected_penalty")]
 }
-metrics <- list_rbind(fold_results)
+
+# Forking only parallelizes independent OUTER folds. All GSVA calls remain serial.
+fold_results <- parallel::mclapply(seq_len(k_folds), run_outer_fold,
+                                  mc.cores = workers, mc.preschedule = FALSE)
+if (any(vapply(fold_results, inherits, logical(1), "try-error"))) {
+  stop("An outer fold failed. See outer_*.log; no incomplete summaries were generated.")
+}
+metrics <- map(fold_results, "metrics") |> list_rbind()
+curves <- map(fold_results, "curves") |> list_rbind()
+tuning <- map(fold_results, "tuning") |> list_rbind()
 write_csv(metrics, file.path(output_folder, "fold_metrics.csv"))
-
-# 5. Fold means and explicitly approximate standard errors ----
-# SD/sqrt(k) ignores dependence from overlapping training sets. These bars are
-# descriptive fold-based SEs, NOT confidence intervals or significance tests.
-metric_labels <- c(uno_cindex = "Uno's C-index\n(higher is better)",
-                   brier_score = "Brier score\n(lower is better)",
-                   integrated_brier_score = "IBS\n(lower is better)")
-long_metrics <- metrics |>
-  pivot_longer(all_of(names(metric_labels)), names_to = "metric", values_to = "value")
-summary_metrics <- long_metrics |>
-  group_by(model, metric) |>
-  summarise(mean = mean(value), sd = sd(value), n_folds = n(),
-            se_naive = sd / sqrt(n_folds), .groups = "drop")
-stopifnot(all(summary_metrics$n_folds == k_folds))
-write_csv(summary_metrics, file.path(output_folder, "metric_summary.csv"))
-write_csv(metrics, file.path(figure_folder, "fold_metrics.csv"))
-write_csv(summary_metrics, file.path(figure_folder, "metric_summary.csv"))
-
-# Pair the pathway and clinical results within the same fold for added value.
-reference <- long_metrics |> filter(model == "Clinical-only Cox") |>
-  select(fold, metric, reference = value)
-differences <- long_metrics |> filter(model != "Clinical-only Cox") |>
-  left_join(reference, by = c("fold", "metric")) |>
-  mutate(improvement = if_else(metric == "uno_cindex", value - reference,
-                                reference - value))
-delta_summary <- differences |>
-  group_by(model, metric) |>
-  summarise(mean = mean(improvement), sd = sd(improvement), n_folds = n(),
-            se_naive = sd / sqrt(n_folds), .groups = "drop")
-write_csv(differences, file.path(output_folder, "paired_fold_improvements.csv"))
-write_csv(delta_summary, file.path(output_folder, "paired_improvement_summary.csv"))
-write_csv(delta_summary, file.path(figure_folder, "paired_improvement_summary.csv"))
-
-pathway_label <- function(x) {
-  x |> str_remove("^REACTOME_") |> str_replace_all("_", " ") |> str_wrap(30)
-}
-prepare_plot <- function(data) {
-  data |> mutate(
-    model = factor(model, levels = c(fixed_pathways, "Clinical-only Cox")),
-    metric = factor(metric, levels = names(metric_labels), labels = metric_labels)
-  )
-}
-cv_plot <- prepare_plot(summary_metrics) |>
-  ggplot(aes(mean, model, colour = model == "Clinical-only Cox")) +
-  geom_segment(aes(x = mean - se_naive, xend = mean + se_naive, yend = model),
-                linewidth = 0.6) +
-  geom_point(size = 2) +
-  facet_wrap(~ metric, scales = "free_x", nrow = 1) +
-  scale_y_discrete(labels = pathway_label) +
-  scale_x_continuous(n.breaks = 3) +
-  scale_colour_manual(values = c("FALSE" = "black", "TRUE" = "firebrick"), guide = "none") +
-  labs(title = "Five-fold held-out performance",
-       subtitle = "Mean +/-1 naive fold SE",
-       x = "Metric value", y = NULL) +
-  theme_bw(base_size = 16) +
-  theme(axis.text.y = element_text(size = 13),
-        strip.text = element_text(size = 12))
-
-delta_plot <- prepare_plot(delta_summary) |>
-  ggplot(aes(mean, model)) +
-  geom_vline(xintercept = 0, linetype = "dashed", colour = "firebrick") +
-  geom_segment(aes(x = mean - se_naive, xend = mean + se_naive, yend = model),
-                linewidth = 0.6) +
-  geom_point(size = 2) +
-  facet_wrap(~ metric, scales = "free_x", nrow = 1) +
-  scale_y_discrete(labels = pathway_label) +
-  scale_x_continuous(n.breaks = 3) +
-  labs(title = "Paired gain over clinical Cox",
-       subtitle = "Mean +/-1 naive fold SE",
-       x = "Improvement over clinical Cox", y = NULL) +
-  theme_bw(base_size = 16) +
-  theme(axis.text.y = element_text(size = 13),
-        strip.text = element_text(size = 12))
-for (extension in c("pdf", "png")) {
-  ggsave(file.path(figure_folder, paste0("01_cv_performance.", extension)),
-          cv_plot, width = 8.5, height = 9, dpi = 300)
-  ggsave(file.path(figure_folder, paste0("02_cv_improvement.", extension)),
-          delta_plot, width = 8.5, height = 9, dpi = 300)
-}
-list(folds = fold_assignments, metrics = metrics, summary = summary_metrics,
-     paired_summary = delta_summary, times = evaluation_times,
-     settings = list(k = k_folds, seed = fold_seed, pathways = fixed_pathways,
-                     uncertainty = "Naive fold SD/sqrt(k); not a confidence interval")) |>
+write_csv(curves, file.path(output_folder, "fold_brier_curves.csv"))
+write_csv(tuning, file.path(output_folder, "nested_ridge_tuning.csv"))
+map(fold_results, "predictions") |> list_rbind() |>
+  write_csv(file.path(output_folder, "held_out_predictions.csv"))
+list(folds = fold_assignments, metrics = metrics, curves = curves, tuning = tuning,
+       selected_penalties = map_dbl(fold_results, "selected_penalty"),
+       times = evaluation_times,
+       settings = list(k = k_folds, inner_folds = inner_folds,
+                         stacking_folds = stacking_folds, seed = fold_seed,
+                         pathways = fixed_pathways, penalties = ridge_penalties,
+                         stacking_horizon = stacking_horizon,
+                         cache_signature = cache_signature)) |>
   saveRDS(file.path(output_folder, "cv_analysis.rds"))
 capture.output(sessionInfo(), file = file.path(output_folder, "session_info.txt"))
-message("Completed five-fold CV. Tables: ", output_folder, "; figures: ", figure_folder)
+message("Completed nested five-fold CV. Run Reactome_covariates_cv_results.R next.")

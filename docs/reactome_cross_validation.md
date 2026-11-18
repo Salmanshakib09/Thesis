@@ -1,45 +1,79 @@
-# Five-fold Reactome validation
+# Reactome thesis analysis: five-fold nested validation
 
-From the project root, after preparing the TCGA LUAD data, run:
+Run from the project root after preparing TCGA LUAD inputs:
 
 ```r
 source("Reactome_covariates_cross_validation.R")
+source("Reactome_covariates_cv_results.R")
 ```
 
-This standalone script fits the ten fixed pilot pathway Cox models and the
-clinical-only Cox reference in five event/stage-stratified outer folds. It does
-not execute the original single-split script or its nested stacked-ridge stage.
-It needs `data/processed/tcga_luad_processed.rds`, the clinical TSV (downloaded
-and cached if absent), and `data/pathways/reactome.gmt`.
+The first script fits models; the second generates the four main figures,
+cohort and performance tables, and an editable Results draft. Reporting does
+not refit models. It does not overwrite your thesis prose when rerun.
 
-Each outer fold refits training gene filtering, PCA, score standardization,
-and all Cox coefficients. GSVA uses separate training/test batches, retaining
-its cohort dependence. ssGSEA uses `normalize = FALSE`. Pathway identities are
-fixed from the exploratory pilot; they are not selected on CV test outcomes.
-The previously chosen prediction window is fixed at 219.2–809 days, rather
-than changing the prediction task from fold to fold. These prior pilot choices
-make this exploratory internal validation, not independent confirmation.
+## What is evaluated
 
-The same folds are used for every model. Each patient is tested exactly once.
-`fold_assignments.csv`, `fold_metrics.csv`, `metric_summary.csv`, paired
-improvement tables, fitted fold models, and session information are saved to
-`data/processed/reactome_covariates_cv/`. Figure PDFs and PNGs are written to
-`figures/reactome_cv/`. The Results section references the two PDF figures.
+The same five event/stage-stratified outer folds evaluate clinical-only Cox,
+ten fixed Reactome pathway Cox models (PC1 + GSVA + ssGSEA + age + sex + stage),
+and the final stacked ridge Cox model. Each patient is tested exactly once.
+The pathways and 219.2–809-day window were fixed in the earlier pilot, making
+this exploratory internal validation rather than independent confirmation.
 
-Dots are equally weighted fold means. Bars are +/- one **naive fold-based SE**
-(SD across five folds divided by sqrt(5)). Overlapping training sets induce
-dependence, so these are descriptive approximate SEs, not confidence intervals
-or significance tests. The clinical reference has its own uncertainty. The
-second figure pairs each pathway metric with the clinical metric from the same
-fold; positive differences favour pathways for all metrics.
+For each outer training set:
 
-Uno's C-index uses the relevant training-fold censoring distribution. Brier
-scores use evaluation-fold censoring weights, matching the existing helper.
-Evaluation fails clearly when follow-up/censoring support is insufficient.
-The script stops on failed pathway-model fits rather than silently dropping
-folds. Original single-split plots remain explicitly labelled in the report.
+1. Refit training gene filtering, PCA loadings, score scaling, and first-stage
+   Cox coefficients. GSVA uses separate training/held-out batches; ssGSEA uses
+   `normalize = FALSE`. GSVA remains cohort-dependent.
+2. Select ridge strength using three inner tuning folds. In EACH tuning-training
+   partition, build a separate three-fold OOF pathway-prediction matrix, fit
+   ridge for the penalty candidates, and evaluate the tuning-validation patients.
+   No single outer OOF matrix is reused for tuning.
+3. Choose the penalty with minimum validation-size-weighted IBS; exact ties
+   favour stronger regularization. Generate fresh three-fold OOF features for
+   all outer training patients, fit ridge, and evaluate the untouched outer test
+   fold. Features are log cumulative hazards at a common 730-day horizon, so
+   their reference is aligned across first-stage fold models.
 
-For a report update, commit the two plot PDFs and compact CSV summaries in
-`figures/reactome_cv/`, then render `thesis.qmd`. These summaries are exported
-automatically alongside the figures. Large RDS inputs and fitted models stay
-untracked.
+Clinical covariates enter the first-stage models; they are not added a second
+time to the ridge stage. Inner fold assignments, candidate losses, selected
+penalties, OOF features, models and test predictions are saved for audit.
+
+The script stops if a first-stage fold fails or no candidate penalty can be
+validated; it does not silently omit folds. First-stage cache files are keyed
+by data, scoring code/package versions and patient partitions. Completed fits
+can be reused when rerunning after interruption. Outer folds run two at a time
+on Mac/Linux (`workers <- 1L` disables parallel work); Windows uses one worker.
+Inner models are serial. Expect substantially longer runtime than first-stage
+CV because every tuning partition must rebuild its stack.
+
+## Outputs
+
+- `data/processed/reactome_covariates_cv/`: raw model/checkpoint RDS files,
+  fold assignments, held-out metrics/predictions, tuning records, and logs.
+- `figures/reactome_cv/`: PDF/PNG main figures and compact metric summaries.
+- `results/reactome_cv/`: patient table, performance table, pathway key,
+  selected penalties, correlation/curve summaries, and `results_draft.qmd`.
+- `thesis.qmd`: the reviewed Results narrative, tables and four figures.
+
+The figure sequence is performance, paired improvement over clinical-only,
+held-out Brier curves, then mean absolute score correlations across outer
+training partitions. Absolute correlations avoid cancellation when PC1 signs
+reverse. These training correlations do not evaluate prediction accuracy.
+
+The draft is a starting point for writing Results. Edit `thesis.qmd` for the
+final narrative; rerunning the reporting script only updates the separate draft.
+When incorporating new results, review the draft, copy the desired text into
+the QMD, and render. Commit the figure PDFs and small CSV summaries with the
+updated QMD/PDF. Large raw data and fitted model RDS files remain ignored.
+
+## Uncertainty and interpretation
+
+Dots are equally weighted outer-fold means. Bars/bands are +/- one naive
+fold-based SE (fold SD/sqrt(5)). Overlapping training sets induce dependence,
+so these are approximate descriptive SEs, NOT confidence intervals or formal
+significance tests. Paired changes compare models on the same test fold.
+Uno uses the outer training censoring distribution; Brier weights use the
+corresponding evaluation fold, following the existing helpers. All models use
+the same time grid. More methods, independent validation and more robust
+uncertainty estimation remain future work; the current pilot does not answer
+all gene-level, scalar/vector, and biological/random-pathway comparisons.
