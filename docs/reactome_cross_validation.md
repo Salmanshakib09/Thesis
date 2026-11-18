@@ -7,7 +7,7 @@ source("Reactome_covariates_cross_validation.R")
 source("Reactome_covariates_cv_results.R")
 ```
 
-The first script fits models; the second generates the four main figures,
+The first script fits models; the second generates the three main figures,
 cohort and performance tables, and an editable Results draft. Reporting does
 not refit models. It does not overwrite your thesis prose when rerun.
 
@@ -53,11 +53,11 @@ CV because every tuning partition must rebuild its stack.
 - `figures/reactome_cv/`: PDF/PNG main figures and compact metric summaries.
 - `results/reactome_cv/`: patient table, performance table, pathway key,
   selected penalties, correlation/curve summaries, and `results_draft.qmd`.
-- `thesis.qmd`: the reviewed Results narrative, tables and four figures.
+- `thesis.qmd`: the reviewed Results narrative, tables and three figures.
 
-The figure sequence is performance, paired improvement over clinical-only,
-held-out Brier curves, then mean absolute score correlations across outer
-training partitions. Absolute correlations avoid cancellation when PC1 signs
+The main figure sequence is performance, held-out Brier curves, then mean
+absolute score correlations across outer training partitions. Paired gains
+remain in the Results prose and CSV summaries, without a separate figure. Absolute correlations avoid cancellation when PC1 signs
 reverse. These training correlations do not evaluate prediction accuracy.
 
 The draft is a starting point for writing Results. Edit `thesis.qmd` for the
@@ -77,3 +77,13 @@ corresponding evaluation fold, following the existing helpers. All models use
 the same time grid. More methods, independent validation and more robust
 uncertainty estimation remain future work; the current pilot does not answer
 all gene-level, scalar/vector, and biological/random-pathway comparisons.
+
+## Figure pagination
+
+The thesis uses `fig-pos="H"` to keep the three main figures at their intended
+positions, `needspace` to keep the Brier/correlation headings and discussion
+with their plots, and a `placeins` float barrier before References. These LaTeX
+packages are included in the QMD header. Generated Results drafts use the same
+placement attributes; when copying a draft to another QMD, keep those header
+packages and the barrier before its bibliography. The reporting script no
+longer creates the paired-gain plot, but still exports its numerical summary.

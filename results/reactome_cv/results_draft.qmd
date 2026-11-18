@@ -47,15 +47,17 @@ The clinical-only Cox model had a mean C-index of 0.635 (SE 0.016), Brier score 
 
 : Five-fold held-out metrics, reported as mean ± naive fold SE (SD divided by sqrt(5)). P01–P10 identify pathways labelled in the figures. Brier score and C-index are evaluated at 809 days; IBS covers 219.2–809 days. {#tbl-cv-performance}
 
-![Held-out performance across five common outer folds. Clinical-only Cox is red, stacked ridge is blue, and individual pathway models are black. Points show fold means; bars show ± one naive fold-based SE. Overlapping training sets make these descriptive SEs approximate; they are not confidence intervals.](figures/reactome_cv/01_cv_performance.pdf){#fig-pathway-performance width="100%" fig-align="center" fig-pos="htbp"}
+![Held-out performance across five common outer folds. Clinical-only Cox is red, stacked ridge is blue, and individual pathway models are black. Points show fold means; bars show ± one naive fold-based SE. Overlapping training sets make these descriptive SEs approximate; they are not confidence intervals.](figures/reactome_cv/01_cv_performance.pdf){#fig-pathway-performance width="100%" fig-align="center" fig-pos="H"}
 
 ### Added value beyond clinical information
 
-The stacked model's mean paired changes relative to clinical-only Cox were 0.012 for C-index improvement, -0.002 for Brier-score improvement, and -0.001 for IBS improvement (@fig-pathway-performance-test). Positive values favour stacking; negative values favour the clinical reference. Differences were calculated within each test fold before averaging. The bars describe fold-based uncertainty, not formal significance tests. The signs and magnitudes should be considered jointly; a gain in discrimination alone does not establish better survival-probability prediction.
+The stacked model's mean paired changes relative to clinical-only Cox were 0.012 for C-index improvement, -0.002 for Brier-score improvement, and -0.001 for IBS improvement. Positive values favour stacking; negative values favour the clinical reference. Differences were calculated within each test fold before averaging. These descriptive differences are not formal significance tests. The signs and magnitudes should be considered jointly; a gain in discrimination alone does not establish better survival-probability prediction.
 
 The direction of the differences varied across metrics; stacking did not show uniform numerical improvement.
 
-![Paired improvement over clinical-only Cox on the same outer test folds. Improvement is model minus clinical C-index, or clinical minus model Brier score/IBS, so positive values favour the pathway or stacked model in all panels. Bars show ± one naive fold SE; the zero line indicates equal performance.](figures/reactome_cv/02_cv_improvement.pdf){#fig-pathway-performance-test width="100%" fig-align="center" fig-pos="htbp"}
+```{=latex}
+\Needspace{0.70\textheight}
+```
 
 ### Prediction error over follow-up
 
@@ -63,13 +65,17 @@ The cross-validated Brier curves compare the clinical-only and stacked models th
 
 The mean stacked-ridge curve was higher (worse) than clinical-only Cox over most of the evaluated grid.
 
-![Mean held-out IPCW Brier curves across the five outer folds, with shaded bands showing ± one naive fold SE. Both models use the same test patients, time grid and censoring-weight convention. Lower values are better. Bands are descriptive and are not confidence intervals or significance tests.](figures/reactome_cv/03_cv_brier_curves.pdf){#fig-cv-brier width="100%" fig-align="center" fig-pos="htbp"}
+![Mean held-out IPCW Brier curves across the five outer folds, with shaded bands showing ± one naive fold SE. Both models use the same test patients, time grid and censoring-weight convention. Lower values are better. Bands are descriptive and are not confidence intervals or significance tests.](figures/reactome_cv/03_cv_brier_curves.pdf){#fig-cv-brier width="100%" fig-align="center" fig-pos="H"}
+
+```{=latex}
+\Needspace{0.90\textheight}
+```
 
 ### Overlap between pathway scores
 
 The mean absolute correlations between GSVA and ssGSEA ranged from 0.74 to 0.95 across the ten pathways (@fig-score-correlations), indicating substantial overlap in their expression information. Absolute correlations are used because the sign of PC1 can reverse between fitted folds. This plot describes score redundancy, not survival association or prediction accuracy.
 
-![Mean absolute Pearson correlations across the five outer training partitions for each pathway. Values near one indicate stronger linear redundancy. Absolute correlations avoid cancellation from arbitrary PC1 sign reversals. Overlapping training sets are not independent replications, and no survival outcomes enter the correlations.](figures/reactome_cv/04_score_correlations.pdf){#fig-score-correlations width="100%" fig-align="center" fig-pos="htbp"}
+![Mean absolute Pearson correlations across the five outer training partitions for each pathway. Values near one indicate stronger linear redundancy. Absolute correlations avoid cancellation from arbitrary PC1 sign reversals. Overlapping training sets are not independent replications, and no survival outcomes enter the correlations.](figures/reactome_cv/04_score_correlations.pdf){#fig-score-correlations width="100%" fig-align="center" fig-pos="H"}
 
 ### Interpretation and scope
 
